@@ -1,4 +1,5 @@
 import { ACCOUNT_PAGE_SIZE, api, fetchAccountList } from '@byte-v-forge/common-ui';
+import type { RequestAccountEmailOtpResponse, SetAccountEmailResponse, SetTwoFactorAuthSettingsResponse, VerifyAccountEmailOtpResponse } from '../proto/byte/v/forge/waapp/v1/account_settings';
 import type { ListAccountOtpMessagesResponse } from '../proto/byte/v/forge/waapp/v1/extraction';
 import type { GetLongConnectionStatusResponse, LongConnectionState } from '../proto/byte/v/forge/waapp/v1/messaging';
 import type { CreateWAAccountResponse, DeleteWAAccountResponse, ListWAAccountsResponse, WAAccount } from '../proto/byte/v/forge/waapp/v1/profile';
@@ -124,6 +125,38 @@ export function checkWaLoginState(input: { workspace_id?: string; login_state_id
   return api<WaWorkflowResponse>('/api/wa/login-state-check', { method: 'POST', body: JSON.stringify(input) });
 }
 
+export async function setWaTwoFactorAuthSettings(account: WAAccount, input: { pin: string; recovery_email?: string }, workspaceId = 'default') {
+  const resp = await api<SetTwoFactorAuthSettingsResponse>('/api/wa/account-settings/2fa', {
+    method: 'POST',
+    body: JSON.stringify({ ...waAccountSettingsPayload(account, workspaceId), pin: input.pin, recovery_email: input.recovery_email || '' }),
+  });
+  return requireAccountSettingsResponse(resp);
+}
+
+export async function setWaAccountEmail(account: WAAccount, input: { email_address: string; google_id_token?: string }, workspaceId = 'default') {
+  const resp = await api<SetAccountEmailResponse>('/api/wa/account-settings/email', {
+    method: 'POST',
+    body: JSON.stringify({ ...waAccountSettingsPayload(account, workspaceId), email_address: input.email_address, google_id_token: input.google_id_token || '' }),
+  });
+  return requireAccountSettingsResponse(resp);
+}
+
+export async function requestWaAccountEmailOtp(account: WAAccount, workspaceId = 'default') {
+  const resp = await api<RequestAccountEmailOtpResponse>('/api/wa/account-settings/email/otp/request', {
+    method: 'POST',
+    body: JSON.stringify({ ...waAccountSettingsPayload(account, workspaceId), locale_language: 'en', locale_country: 'US' }),
+  });
+  return requireAccountSettingsResponse(resp);
+}
+
+export async function verifyWaAccountEmailOtp(account: WAAccount, code: string, workspaceId = 'default') {
+  const resp = await api<VerifyAccountEmailOtpResponse>('/api/wa/account-settings/email/otp/verify', {
+    method: 'POST',
+    body: JSON.stringify({ ...waAccountSettingsPayload(account, workspaceId), code }),
+  });
+  return requireAccountSettingsResponse(resp);
+}
+
 function waAccountActionPayload(account: WAAccount, workspaceId: string) {
   const phone = account.phone;
   if (!phone?.e164_number || !phone.country_calling_code) throw new Error('WAAccount phone is incomplete');
@@ -132,4 +165,16 @@ function waAccountActionPayload(account: WAAccount, workspaceId: string) {
     wa_account_id: account.account?.key?.account_id || '',
     phone,
   };
+}
+
+function waAccountSettingsPayload(account: WAAccount, workspaceId: string) {
+  const accountID = account.account?.key?.account_id || '';
+  if (!accountID) throw new Error('wa_account_id is required');
+  return { workspace_id: account.workspace_id || workspaceId, wa_account_id: accountID };
+}
+
+function requireAccountSettingsResponse<T extends { error?: { message?: string }; operation?: { error?: { message?: string } } }>(resp: T) {
+  const message = resp.error?.message || resp.operation?.error?.message;
+  if (message) throw new Error(message);
+  return resp;
 }

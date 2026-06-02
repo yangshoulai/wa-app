@@ -71,6 +71,7 @@ type ProtocolEngine interface {
 	CheckLoginState(context.Context, EngineLoginCheckInput) EngineLoginCheckResult
 	ReceiveMessageBatch(context.Context, EngineMessageInput) EngineMessageBatchResult
 	DecryptMessage(context.Context, EngineDecryptInput) EngineDecryptResult
+	ApplyAccountSettings(context.Context, EngineAccountSettingsInput) EngineAccountSettingsResult
 }
 
 type EngineProfileInput struct {
@@ -123,6 +124,22 @@ type EngineDecryptInput struct {
 	PayloadRef           string
 	SessionCommitPolicy  waappv1.SessionCommitPolicy
 	IncludePlaintextText bool
+}
+
+type EngineAccountSettingsInput struct {
+	WorkspaceID          string
+	WAAccountID          string
+	ClientProfileID      string
+	RegisteredIdentityID string
+	LoginStateID         string
+	Kind                 waappv1.AccountSettingsOperationKind
+	Pin                  string
+	RecoveryEmail        string
+	EmailAddress         string
+	GoogleIDToken        string
+	LocaleLanguage       string
+	LocaleCountry        string
+	Code                 string
 }
 
 type EngineProbeResult struct {
@@ -187,4 +204,10 @@ type EngineDecryptResult struct {
 	DecryptedMessage *waappv1.DecryptedMessage
 	Candidates       []*waappv1.ExtractedCandidate
 	Err              error
+}
+
+type EngineAccountSettingsResult struct {
+	Status   waappv1.AccountSettingsOperationStatus
+	WaitTime time.Duration
+	Err      error
 }

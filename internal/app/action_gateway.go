@@ -505,6 +505,7 @@ func (s *Server) ensureDefaultProtocolProfile(ctx context.Context, workspaceID s
 			waappv1.ProtocolCapability_PROTOCOL_CAPABILITY_CODE_REQUEST,
 			waappv1.ProtocolCapability_PROTOCOL_CAPABILITY_CODE_SUBMIT,
 			waappv1.ProtocolCapability_PROTOCOL_CAPABILITY_MESSAGE_SESSION,
+			waappv1.ProtocolCapability_PROTOCOL_CAPABILITY_ACCOUNT_SETTINGS,
 		},
 		RegistrationFlows: []waappv1.RegistrationFlowKind{waappv1.RegistrationFlowKind_REGISTRATION_FLOW_KIND_NEW_ACCOUNT},
 		MessageTransports: []waappv1.MessageTransportKind{waappv1.MessageTransportKind_MESSAGE_TRANSPORT_KIND_LONG_CONNECTION},

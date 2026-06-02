@@ -18,6 +18,7 @@ type Server struct {
 	waappv1.UnimplementedWaMessagingServiceServer
 	waappv1.UnimplementedWaExtractionServiceServer
 	waappv1.UnimplementedWaToolingServiceServer
+	waappv1.UnimplementedWaAccountSettingsServiceServer
 
 	store   Store
 	runtime RuntimeState

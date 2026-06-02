@@ -21,6 +21,7 @@ import { WaOtpSource } from '@byte-v-forge/common-ui/proto/byte/v/forge/contract
 import type { OtpMessage } from '../proto/byte/v/forge/waapp/v1/extraction';
 import type { WaAccountProjection, WaWorkflowResponse } from './wa-api';
 import { getWaAccountOtpMessages, submitWaRegistrationOTP, waKeys } from './wa-api';
+import { WaAccountSecurityPanel } from './wa-account-security';
 import { WaResultPanel } from './wa-result-panel';
 
 const ACCOUNT_WORKSPACE_ID = 'default';
@@ -47,6 +48,7 @@ export function waAccountDetailTabs(options: {
       label: '账户详情',
       content: <WaAccountOverview carrier={carrier} account={account} actionResult={options.actionResult} busy={options.busy} onRegister={options.onRegister} onProbe={options.onProbe} onDelete={options.onDelete} onManualOTPDone={options.onManualOTPDone} onError={options.onError} />,
     },
+    { value: 'security', label: '安全/邮箱', content: <WaAccountSecurityPanel account={carrier} onDone={options.onManualOTPDone} onError={options.onError} /> },
     { value: 'otp', label: 'OTP 历史', content: <WaOtpHistory account={account} /> },
   ];
 }

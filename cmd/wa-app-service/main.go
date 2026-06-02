@@ -63,6 +63,7 @@ func main() {
 	waappv1.RegisterWaMessagingServiceServer(server, service)
 	waappv1.RegisterWaExtractionServiceServer(server, service)
 	waappv1.RegisterWaToolingServiceServer(server, service)
+	waappv1.RegisterWaAccountSettingsServiceServer(server, service)
 	grpchealth.RegisterServing(server)
 
 	group, groupCtx := errgroup.WithContext(ctx)
