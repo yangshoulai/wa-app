@@ -66,10 +66,10 @@ func (p *DynamicProxyRuntime) AcquireUSDynamic(ctx context.Context, purpose stri
 				"correlation":  correlationID,
 			},
 		},
-		"chain_policy": map[string]any{
+		"route_policy": map[string]any{
 			"country_code":                 "US",
 			"purpose":                      purpose,
-			"strategy":                     "PROXY_CHAIN_STRATEGY_REGION_AWARE",
+			"strategy":                     "PROXY_SELECTOR_STRATEGY_HASH_TARGET_HOST",
 			"max_attempts":                 3,
 			"allow_direct_dynamic_gateway": false,
 			"prefer_line_proxy":            true,
