@@ -97,7 +97,15 @@ func accountMessageDisplayText(text string) string {
 	if value := waJSONDisplayText(text); value != "" {
 		return value
 	}
+	if waJSONLikeText(text) {
+		return ""
+	}
 	return text
+}
+
+func waJSONLikeText(text string) bool {
+	text = strings.TrimSpace(text)
+	return strings.HasPrefix(text, "{") && strings.HasSuffix(text, "}")
 }
 
 func payloadTextSummary(payloadRef string) string {

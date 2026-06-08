@@ -29,6 +29,62 @@ type waMessageTextCandidate struct {
 	score int
 }
 
+var waJSONTextKeys = []string{
+	"display_text",
+	"display_title",
+	"title",
+	"subtitle",
+	"text",
+	"text_to_send",
+	"body",
+	"description",
+	"localized_description",
+	"footer",
+	"footer_text",
+	"button_text",
+	"cta_button_text",
+	"pay_now_button_text",
+	"remind_me_button_text",
+	"cancel_reminder_button_text",
+	"display_add_to_calendar_cta_text",
+	"display_view_on_maps_cta_text",
+	"display_manage_booking_cta_text",
+	"url_text",
+	"name",
+	"notification_title",
+	"message_origin",
+	"formatted_amount",
+	"formatted_amount_with_currency",
+	"start_datetime",
+	"end_datetime",
+	"location",
+	"phone_number",
+	"business_phone_number",
+	"email",
+}
+
+var waJSONURLKeys = []string{
+	"url",
+	"merchant_url",
+	"consented_users_url",
+	"fallback_url",
+	"web_url",
+	"deeplink_url",
+	"app_deeplink_parameters",
+	"canonical_url",
+	"full_url",
+	"booking_url",
+	"booking_management_url",
+	"privacy_policy_url",
+	"website_url",
+	"product_url",
+	"content_url",
+	"url_start",
+	"url_end",
+	"initial_url",
+	"final_url",
+}
+
 func nativeMessageDisplayText(raw []byte) (string, bool) {
 	candidates := []waMessageTextCandidate{}
 	collectWAMessageText(raw, nil, 0, &candidates)
@@ -661,12 +717,12 @@ func waJSONDisplayText(text string) string {
 		return ""
 	}
 	parts := []string{}
-	for _, key := range []string{"display_text", "display_title", "title", "text", "body", "description", "footer_text", "button_text", "cta_button_text", "url_text", "name", "message_origin", "formatted_amount", "formatted_amount_with_currency"} {
+	for _, key := range waJSONTextKeys {
 		if part := waJSONTextValue(payload[key]); part != "" {
 			parts = append(parts, part)
 		}
 	}
-	for _, key := range []string{"url", "merchant_url", "consented_users_url", "fallback_url", "web_url", "deeplink_url"} {
+	for _, key := range waJSONURLKeys {
 		if part := waJSONURLValue(payload[key]); part != "" {
 			parts = append(parts, part)
 		}
@@ -705,12 +761,12 @@ func waJSONNestedTextValues(value any, depth int) []string {
 	switch typed := value.(type) {
 	case map[string]any:
 		parts := []string{}
-		for _, key := range []string{"display_text", "display_title", "title", "text", "body", "description", "footer_text", "button_text", "cta_button_text", "url_text", "name"} {
+		for _, key := range waJSONTextKeys {
 			if part := waJSONTextValue(typed[key]); part != "" {
 				parts = append(parts, part)
 			}
 		}
-		for _, key := range []string{"url", "merchant_url", "consented_users_url", "fallback_url", "web_url", "deeplink_url"} {
+		for _, key := range waJSONURLKeys {
 			if part := waJSONURLValue(typed[key]); part != "" {
 				parts = append(parts, part)
 			}
