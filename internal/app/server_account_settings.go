@@ -140,28 +140,17 @@ func (s *Server) applyAccountSettings(ctx context.Context, requestContext *waapp
 func (s *Server) accountSettingsRunner(ctx context.Context, requestContext *waappv1.RequestContext) (ProtocolEngine, func(), error) {
 	runner := s.runner
 	native, ok := runner.(*NativeEngine)
-	if !ok || strings.TrimSpace(native.activeProxyURL) != "" || s.proxyRuntime == nil {
+	if !ok {
 		return runner, func() {}, nil
 	}
-	username := strings.TrimSpace(s.accountSettingsProxyUsername)
-	if username == "" {
-		return runner, func() {}, nil
-	}
-	route, err := s.proxyRuntime.GatewayProxyRoute(ctx, username, DynamicProxyRouteRequest{
+	proxied, release, _ := s.optionalGatewayProxyEngine(ctx, native, gatewayProxyEngineRequest{
+		Username:      s.accountSettingsProxyUsername,
 		Purpose:       "WA_ACCOUNT_SETTINGS",
 		CorrelationID: firstNonEmpty(requestContext.GetCorrelationId(), requestContext.GetRequestId()),
 		TTL:           defaultAccountIQTimeout + 10*time.Second,
 		Mode:          DynamicProxySessionModeSticky,
 	})
-	if err != nil {
-		return runner, func() {}, nil
-	}
-	proxied, err := native.WithProxyURL(route.ProxyURL)
-	if err != nil {
-		_ = s.proxyRuntime.ReleaseProxyRoute(context.Background(), route)
-		return runner, func() {}, nil
-	}
-	return proxied, func() { _ = s.proxyRuntime.ReleaseProxyRoute(context.Background(), route) }, nil
+	return proxied, release, nil
 }
 
 func (s *Server) accountSettingsLoginState(ctx context.Context, selector *waappv1.AccountLoginSelector) (*waappv1.LoginState, error) {

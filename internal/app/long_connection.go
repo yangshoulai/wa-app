@@ -322,7 +322,7 @@ func (s *Server) ensureLongConnection(ctx context.Context, loginState *waappv1.L
 	}
 }
 
-func (s *Server) longConnectionRunner(ctx context.Context, _ *waappv1.LoginState) (ProtocolEngine, error) {
+func (s *Server) longConnectionRunner(ctx context.Context, loginState *waappv1.LoginState) (ProtocolEngine, error) {
 	engine, ok := s.runner.(*NativeEngine)
 	if !ok {
 		return s.runner, nil
@@ -330,23 +330,21 @@ func (s *Server) longConnectionRunner(ctx context.Context, _ *waappv1.LoginState
 	if strings.TrimSpace(engine.activeProxyURL) != "" {
 		return newLongConnectionNativeEngine(engine), nil
 	}
-	if s.proxyRuntime == nil {
-		return newLongConnectionNativeEngine(engine), nil
+	proxyEngine, release, _ := s.optionalGatewayProxyEngine(ctx, engine, gatewayProxyEngineRequest{
+		Username:      s.longProxyUsername,
+		Purpose:       "WA_LONG_CONNECTION",
+		CorrelationID: longConnectionProxyCorrelationID(loginState),
+		TTL:           longConnectionWaitTimeout + longConnectionChatdOpenTimeout,
+		Mode:          DynamicProxySessionModeSticky,
+	})
+	return newLongConnectionNativeEngine(proxyEngine, release), nil
+}
+
+func longConnectionProxyCorrelationID(loginState *waappv1.LoginState) string {
+	if loginState == nil {
+		return ""
 	}
-	username := strings.TrimSpace(s.longProxyUsername)
-	if username == "" {
-		return newLongConnectionNativeEngine(engine), nil
-	}
-	proxyURL, err := s.proxyRuntime.GatewayProxyURL(ctx, username)
-	if err != nil {
-		log.Printf("WA long connection proxy unavailable; using direct connection: %v", sanitizeLogError(err))
-		return newLongConnectionNativeEngine(engine), nil
-	}
-	proxyEngine, err := engine.WithProxyURL(proxyURL)
-	if err != nil {
-		return nil, err
-	}
-	return newLongConnectionNativeEngine(proxyEngine), nil
+	return firstNonEmpty(loginState.GetLoginStateId(), loginState.GetWaAccountId())
 }
 
 func longConnectionKey(loginState *waappv1.LoginState) string {

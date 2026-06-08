@@ -10,7 +10,6 @@ import (
 	"fmt"
 	"math/big"
 	mrand "math/rand"
-	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -487,11 +486,4 @@ func fullPhoneKey(cc string, phone string) string {
 		return hex.EncodeToString(sha256.New().Sum(nil))
 	}
 	return compact
-}
-
-func proxyURL(value string) (*url.URL, error) {
-	if strings.TrimSpace(value) == "" {
-		return nil, nil
-	}
-	return url.Parse(value)
 }

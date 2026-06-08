@@ -14,18 +14,26 @@ const (
 type longConnectionNativeEngine struct {
 	*NativeEngine
 
-	mu      sync.Mutex
-	session *chatdSession
+	mu          sync.Mutex
+	session     *chatdSession
+	release     func()
+	releaseOnce sync.Once
 }
 
-func newLongConnectionNativeEngine(engine *NativeEngine) *longConnectionNativeEngine {
-	return &longConnectionNativeEngine{NativeEngine: engine}
+func newLongConnectionNativeEngine(engine *NativeEngine, release ...func()) *longConnectionNativeEngine {
+	cleanup := func() {}
+	if len(release) > 0 && release[0] != nil {
+		cleanup = release[0]
+	}
+	return &longConnectionNativeEngine{NativeEngine: engine, release: cleanup}
 }
 
 func (e *longConnectionNativeEngine) Close() error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
-	return e.closeLocked()
+	err := e.closeLocked()
+	e.releaseOnce.Do(e.release)
+	return err
 }
 
 func (e *longConnectionNativeEngine) ReceiveMessageBatch(ctx context.Context, input EngineMessageInput) EngineMessageBatchResult {

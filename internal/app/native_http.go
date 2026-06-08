@@ -34,7 +34,7 @@ func (c *nativeHTTPClient) CloseIdleConnections() {
 func newNativeHTTPClient(proxy string) (*nativeHTTPClient, error) {
 	transport := &http.Transport{DisableKeepAlives: true, TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}
 	if proxy != "" {
-		parsed, err := proxyURL(proxy)
+		parsed, err := parseOutboundProxyURL(proxy)
 		if err != nil {
 			return nil, err
 		}

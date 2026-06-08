@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	waappv1 "github.com/byte-v-forge/wa-app/gen/go/byte/v/forge/waapp/v1"
@@ -44,6 +45,9 @@ type DynamicProxyRuntime struct {
 	baseURL       string
 	gatewayScheme string
 	client        *http.Client
+	mu            sync.Mutex
+	rules         []proxyIngressRuleSettings
+	rulesExpireAt time.Time
 }
 
 type gatewayProxyRule struct {
@@ -71,7 +75,11 @@ type proxyIngressRuleSettings struct {
 	ProfileID     string `json:"profile_id"`
 }
 
-const proxyRuntimeGatewayPort = "10810"
+const (
+	proxyRuntimeGatewayPort      = "10810"
+	proxyRuntimeRequestTimeout   = 5 * time.Second
+	proxyRuntimeSettingsCacheTTL = 5 * time.Minute
+)
 
 func NewDynamicProxyRuntime(baseURL string, gatewayProtocol string) *DynamicProxyRuntime {
 	baseURL = strings.TrimRight(strings.TrimSpace(baseURL), "/")
@@ -158,34 +166,75 @@ func (p *DynamicProxyRuntime) gatewayProxyRule(ctx context.Context, username str
 	if username == "" {
 		return gatewayProxyRule{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_VALIDATION_FAILED, "gateway username is required", false)
 	}
-	endpoint, err := p.endpoint("/settings/in-user-rules")
+	if rule, ok := p.cachedGatewayProxyRule(username, time.Now().UTC()); ok {
+		return rule, nil
+	}
+	rules, err := p.fetchGatewayProxyRules(ctx)
 	if err != nil {
+		if rule, ok := p.cachedGatewayProxyRule(username, time.Now().UTC()); ok {
+			return rule, nil
+		}
 		return gatewayProxyRule{}, err
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	p.cacheGatewayProxyRules(rules, time.Now().UTC().Add(proxyRuntimeSettingsCacheTTL))
+	if rule, ok := gatewayProxyRuleFromSettings(username, rules); ok {
+		return rule, nil
+	}
+	return gatewayProxyRule{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_ROUTE_UNAVAILABLE, fmt.Sprintf("proxy-runtime gateway user %q is unavailable", username), true)
+}
+
+func (p *DynamicProxyRuntime) fetchGatewayProxyRules(ctx context.Context) ([]proxyIngressRuleSettings, error) {
+	endpoint, err := p.endpoint("/settings/in-user-rules")
 	if err != nil {
-		return gatewayProxyRule{}, err
+		return nil, err
+	}
+	reqCtx, cancel := context.WithTimeout(ctx, proxyRuntimeRequestTimeout)
+	defer cancel()
+	req, err := http.NewRequestWithContext(reqCtx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return nil, err
 	}
 	resp, err := p.client.Do(req)
 	if err != nil {
-		return gatewayProxyRule{}, err
+		return nil, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_ROUTE_UNAVAILABLE, "proxy-runtime gateway ingress unavailable", true)
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 2<<20))
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return gatewayProxyRule{}, proxyRuntimeRouteError("gateway ingress", resp.StatusCode, body)
+		return nil, proxyRuntimeRouteError("gateway ingress", resp.StatusCode, body)
 	}
 	var settings proxyRuntimeSettingsResponse
 	if err := json.Unmarshal(body, &settings); err != nil {
-		return gatewayProxyRule{}, err
+		return nil, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_ROUTE_UNAVAILABLE, "proxy-runtime gateway ingress response is invalid", true)
 	}
-	for _, rule := range settings.Settings.IngressRules {
+	return settings.Settings.IngressRules, nil
+}
+
+func gatewayProxyRuleFromSettings(username string, rules []proxyIngressRuleSettings) (gatewayProxyRule, bool) {
+	username = strings.TrimSpace(username)
+	for _, rule := range rules {
 		if !rule.Enabled || strings.TrimSpace(rule.Username) != username {
 			continue
 		}
-		return gatewayProxyRule{Username: username, Password: rule.PasswordValue, ProfileID: strings.TrimSpace(rule.ProfileID)}, nil
+		return gatewayProxyRule{Username: username, Password: rule.PasswordValue, ProfileID: strings.TrimSpace(rule.ProfileID)}, true
 	}
-	return gatewayProxyRule{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_ROUTE_UNAVAILABLE, fmt.Sprintf("proxy-runtime gateway user %q is unavailable", username), true)
+	return gatewayProxyRule{}, false
+}
+
+func (p *DynamicProxyRuntime) cachedGatewayProxyRule(username string, now time.Time) (gatewayProxyRule, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if now.IsZero() || p.rulesExpireAt.IsZero() || !now.Before(p.rulesExpireAt) {
+		return gatewayProxyRule{}, false
+	}
+	return gatewayProxyRuleFromSettings(username, p.rules)
+}
+
+func (p *DynamicProxyRuntime) cacheGatewayProxyRules(rules []proxyIngressRuleSettings, expiresAt time.Time) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.rules = append([]proxyIngressRuleSettings{}, rules...)
+	p.rulesExpireAt = expiresAt
 }
 
 func (p *DynamicProxyRuntime) endpoint(path string) (string, error) {

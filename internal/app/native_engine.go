@@ -50,7 +50,10 @@ func NewNativeEngine(stateStore NativeStateStore, clock Clock, ids IDGenerator) 
 }
 
 func (e *NativeEngine) WithProxyURL(proxyURL string) (*NativeEngine, error) {
-	proxyURL = strings.TrimSpace(proxyURL)
+	proxyURL, err := normalizeProxyURLString(proxyURL)
+	if err != nil {
+		return nil, err
+	}
 	hc, err := newNativeHTTPClient(proxyURL)
 	if err != nil {
 		return nil, err

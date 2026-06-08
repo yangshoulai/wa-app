@@ -382,7 +382,7 @@ func (c *chatdClient) dial(ctx context.Context, endpoint chatdEndpoint) (net.Con
 }
 
 func (c *chatdClient) dialProxy(ctx context.Context, endpoint chatdEndpoint) (net.Conn, error) {
-	parsed, err := url.Parse(c.cfg.ProxyURL)
+	parsed, err := parseOutboundProxyURL(c.cfg.ProxyURL)
 	if err != nil {
 		return nil, err
 	}
