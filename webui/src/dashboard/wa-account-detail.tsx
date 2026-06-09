@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { KeyRound, Shield, Trash2 } from 'lucide-react';
+import { WAAccountStatus } from '../proto/byte/v/forge/waapp/v1/profile';
 import type { ClientProfile, WAAccount } from '../proto/byte/v/forge/waapp/v1/profile';
 import { submitWaRegistrationOTP, waAccountID, waAccountTitle } from './wa-api';
 import { WaAccountSecurityPanel } from './wa-account-security';
@@ -15,13 +16,17 @@ export function WaAccountDetail({ account, profiles, profilesLoading, busy, onDe
         <div><h2 className="text-base font-semibold">{waAccountTitle(account)}</h2><p className="truncate font-mono text-xs text-muted-foreground">{waAccountID(account)}</p></div>
         <Badge variant="outline">{account.status || 'UNKNOWN'}</Badge>
       </header>
-      <ManualOtpSubmit account={account} busy={busy} onDone={onDone} onError={onError} />
+      {isRegistrationPending(account) && <ManualOtpSubmit account={account} busy={busy} onDone={onDone} onError={onError} />}
       <details className="rounded-xl border border-border p-3"><summary className="cursor-pointer text-sm font-semibold">基础信息</summary><div className="mt-3"><InfoGrid account={account} /></div></details>
       <details className="rounded-xl border border-border p-3" open><summary className="cursor-pointer text-sm font-semibold">设备指纹</summary><div className="mt-3"><WaDeviceFingerprintPanel profiles={profiles} loading={profilesLoading} /></div></details>
       <details className="rounded-xl border border-border p-3"><summary className="inline-flex cursor-pointer items-center gap-2 text-sm font-semibold"><Shield size={15} />安全设置</summary><div className="mt-3"><WaAccountSecurityPanel account={account} onDone={onDone} onError={onError} /></div></details>
       <details className="rounded-xl border border-destructive/30 p-3"><summary className="cursor-pointer text-sm font-semibold text-destructive">危险操作</summary><div className="mt-3"><Button variant="destructive" disabled={busy} onClick={() => onDelete(account)}><Trash2 size={14} />删除账号</Button></div></details>
     </section>
   );
+}
+
+function isRegistrationPending(account: WAAccount) {
+  return account.status === WAAccountStatus.WA_ACCOUNT_STATUS_PENDING_REGISTRATION;
 }
 
 function ManualOtpSubmit({ account, busy, onDone, onError }: { account: WAAccount; busy: boolean; onDone: (message: string) => void; onError: (message: string) => void }) {
