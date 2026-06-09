@@ -102,7 +102,7 @@ func needsContactResolution(contact *waappv1.WAContact) bool {
 	if contact == nil || !strings.HasSuffix(contact.GetJid(), "@lid") {
 		return false
 	}
-	return contact.GetNumber() == "" || contact.GetDisplayName() == "" || contact.GetDisplayName() == "未知联系人" || strings.HasPrefix(contact.GetDisplayName(), "LID ")
+	return !contactUsyncHasIdentity(contact)
 }
 
 func (s *Server) activeContactResolveLoginState(ctx context.Context, accountID string) (*waappv1.LoginState, error) {

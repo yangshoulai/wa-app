@@ -136,13 +136,77 @@ type contactUsyncVariant struct {
 	Name             string
 	Context          string
 	UserContainer    string
+	UserAddressing   contactUsyncUserAddressing
 	Query            []chatdNode
 	UsyncExtraAttrs  map[string]string
 	IncludeEmptyList bool
 }
 
+type contactUsyncUserAddressing string
+
+const (
+	contactUsyncUserJIDOnly contactUsyncUserAddressing = ""
+	contactUsyncUserLID     contactUsyncUserAddressing = "lid"
+	contactUsyncUserLIDOnly contactUsyncUserAddressing = "lid_only"
+)
+
 func contactUsyncVariants() []contactUsyncVariant {
 	return []contactUsyncVariant{
+		{
+			Name:           "message_lid_contact_query",
+			Context:        "message",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
+			Query: []chatdNode{
+				{Tag: "contact"},
+			},
+		},
+		{
+			Name:           "message_lid_protocol_query",
+			Context:        "message",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
+			Query: []chatdNode{
+				{Tag: "lid"},
+			},
+		},
+		{
+			Name:           "message_lid_attr_only_query",
+			Context:        "message",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLIDOnly,
+			Query: []chatdNode{
+				{Tag: "contact"},
+				{Tag: "lid"},
+			},
+		},
+		{
+			Name:           "notification_lid_contact_query",
+			Context:        "notification",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
+			Query: []chatdNode{
+				{Tag: "contact"},
+				{Tag: "lid"},
+			},
+		},
+		{
+			Name:          "interactive_full_multi_protocol",
+			Context:       "interactive",
+			UserContainer: "list",
+			Query: []chatdNode{
+				{Tag: "contact"},
+				{Tag: "sidelist"},
+				{Tag: "status"},
+				{Tag: "picture", Attrs: map[string]string{"type": "preview"}},
+				buildContactUsyncBusinessQuery(),
+				{Tag: "devices", Attrs: map[string]string{"version": "2"}},
+				{Tag: "disappearing_mode"},
+				{Tag: "lid"},
+				{Tag: "username"},
+				{Tag: "text_status"},
+			},
+		},
 		{
 			Name:          "interactive_username_contact",
 			Context:       "interactive",
@@ -161,9 +225,10 @@ func contactUsyncVariants() []contactUsyncVariant {
 			},
 		},
 		{
-			Name:          "interactive_contact_addressed_lid",
-			Context:       "interactive",
-			UserContainer: "list",
+			Name:           "interactive_contact_addressed_lid",
+			Context:        "interactive",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
 			Query: []chatdNode{
 				{Tag: "contact", Attrs: map[string]string{"addressing_mode": "lid"}},
 				{Tag: "lid"},
@@ -172,9 +237,10 @@ func contactUsyncVariants() []contactUsyncVariant {
 			},
 		},
 		{
-			Name:          "message_lid_migration",
-			Context:       "message",
-			UserContainer: "list",
+			Name:           "message_lid_migration",
+			Context:        "message",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
 			Query: []chatdNode{
 				{Tag: "contact", Attrs: map[string]string{"addressing_mode": "lid"}},
 				{Tag: "lid"},
@@ -183,9 +249,10 @@ func contactUsyncVariants() []contactUsyncVariant {
 			},
 		},
 		{
-			Name:          "notification_lid_migration",
-			Context:       "notification",
-			UserContainer: "list",
+			Name:           "notification_lid_migration",
+			Context:        "notification",
+			UserContainer:  "list",
+			UserAddressing: contactUsyncUserLID,
 			Query: []chatdNode{
 				{Tag: "contact", Attrs: map[string]string{"addressing_mode": "lid"}},
 				{Tag: "lid"},
@@ -194,9 +261,10 @@ func contactUsyncVariants() []contactUsyncVariant {
 			},
 		},
 		{
-			Name:          "interactive_sidelist_lid",
-			Context:       "interactive",
-			UserContainer: "side_list",
+			Name:           "interactive_sidelist_lid",
+			Context:        "interactive",
+			UserContainer:  "side_list",
+			UserAddressing: contactUsyncUserLID,
 			Query: []chatdNode{
 				{Tag: "contact", Attrs: map[string]string{"addressing_mode": "lid"}},
 				{Tag: "sidelist", Attrs: map[string]string{"addressing_mode": "lid"}},
@@ -205,9 +273,10 @@ func contactUsyncVariants() []contactUsyncVariant {
 			},
 		},
 		{
-			Name:          "interactive_sidelist_plain",
-			Context:       "interactive",
-			UserContainer: "side_list",
+			Name:           "interactive_sidelist_plain",
+			Context:        "interactive",
+			UserContainer:  "side_list",
+			UserAddressing: contactUsyncUserLID,
 			Query: []chatdNode{
 				{Tag: "contact", Attrs: map[string]string{"addressing_mode": "lid"}},
 				{Tag: "sidelist"},
@@ -231,7 +300,7 @@ func buildContactUsyncBusinessQuery() chatdNode {
 func buildContactUsyncIQ(id string, sid string, jids []string, variant contactUsyncVariant) chatdNode {
 	users := make([]chatdNode, 0, len(jids))
 	for _, jid := range jids {
-		users = append(users, chatdNode{Tag: "user", Attrs: map[string]string{"jid": jid}})
+		users = append(users, chatdNode{Tag: "user", Attrs: contactUsyncUserAttrs(jid, variant.UserAddressing)})
 	}
 	attrs := map[string]string{
 		"sid":     sid,
@@ -259,6 +328,18 @@ func buildContactUsyncIQ(id string, sid string, jids []string, variant contactUs
 			Attrs:   attrs,
 			Content: content,
 		}},
+	}
+}
+
+func contactUsyncUserAttrs(jid string, addressing contactUsyncUserAddressing) map[string]string {
+	jid = normalizeWAJID(jid)
+	switch addressing {
+	case contactUsyncUserLID:
+		return map[string]string{"jid": jid, "lid": jid, "addressing_mode": "lid"}
+	case contactUsyncUserLIDOnly:
+		return map[string]string{"lid": jid, "addressing_mode": "lid"}
+	default:
+		return map[string]string{"jid": jid}
 	}
 }
 
@@ -439,8 +520,14 @@ func firstJIDInNodeBySuffix(node chatdNode, suffix string) string {
 }
 
 func contactUsyncPhoneNumber(node chatdNode) string {
-	for _, key := range []string{"number", "phone", "pn", "wa_id"} {
+	for _, key := range []string{"number", "phone", "phone_number", "business_phone_number", "pn", "wa_id"} {
 		if number := digitsOnly(node.Attrs[key]); number != "" {
+			return number
+		}
+	}
+	switch node.Tag {
+	case "number", "phone", "phone_number", "business_phone_number":
+		if number := digitsOnly(chatdNodeText(node)); number != "" {
 			return number
 		}
 	}

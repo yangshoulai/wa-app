@@ -4,6 +4,7 @@ import (
 	"context"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	waappv1 "github.com/byte-v-forge/wa-app/gen/go/byte/v/forge/waapp/v1"
@@ -75,7 +76,7 @@ func contactFromDecryptedMessage(accountID string, msg *waappv1.InboundMessage, 
 	if contact == nil {
 		return nil
 	}
-	name, business := inferWAContactDisplayName(text)
+	name, business := inferWAContactDisplayName(text, contact.GetJid())
 	if name == "" {
 		return nil
 	}
@@ -225,16 +226,41 @@ func fallbackContactName(prefix string, value string) string {
 	return prefix + " " + value
 }
 
-func inferWAContactDisplayName(text string) (string, bool) {
+func inferWAContactDisplayName(text string, jid string) (string, bool) {
 	value := strings.ToLower(text)
 	switch {
 	case strings.Contains(value, "facebook.com") || strings.Contains(value, " facebook"):
 		return "Facebook", true
 	case strings.Contains(value, "instagram.com") || strings.Contains(value, " instagram"):
 		return "Instagram", true
+	case strings.HasSuffix(normalizeWAJID(jid), "@lid") && looksLikeVerificationCodeOnlyMessage(text):
+		return "验证码服务", true
 	default:
 		return "", false
 	}
+}
+
+func looksLikeVerificationCodeOnlyMessage(text string) bool {
+	value := strings.TrimSpace(text)
+	if value == "" || utf8.RuneCountInString(value) > 32 {
+		return false
+	}
+	digits := digitsOnly(value)
+	if len(digits) < 4 || len(digits) > 10 {
+		return false
+	}
+	for _, r := range value {
+		if unicode.IsDigit(r) || unicode.IsSpace(r) {
+			continue
+		}
+		switch r {
+		case '-', '–', '—', '.', ':':
+			continue
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func shortContactToken(value string) string {
