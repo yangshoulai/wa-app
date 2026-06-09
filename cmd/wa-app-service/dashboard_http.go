@@ -180,11 +180,7 @@ func (s *dashboardHTTP) handleAccountProfilePicture(w http.ResponseWriter, r *ht
 	defer cancel()
 	picture, err := s.service.GetWAAccountProfilePicture(ctx, accountID)
 	if err != nil {
-		if app.IsWAProfilePictureNotFound(err) {
-			http.NotFound(w, r)
-			return
-		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load WA account profile picture failed"})
+		writeProfilePictureNotFound(w)
 		return
 	}
 	writeProfilePicture(w, picture.ContentType, picture.ProfilePictureID, "private, no-cache", picture.Data)
@@ -439,14 +435,15 @@ func (s *dashboardHTTP) handleContactProfilePicture(w http.ResponseWriter, r *ht
 	defer cancel()
 	picture, err := s.service.GetWAContactProfilePicture(ctx, contactID)
 	if err != nil {
-		if app.IsWAProfilePictureNotFound(err) {
-			http.NotFound(w, r)
-			return
-		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "load WA contact profile picture failed"})
+		writeProfilePictureNotFound(w)
 		return
 	}
 	writeProfilePicture(w, picture.ContentType, picture.ProfilePictureID, "private, max-age=3600", picture.Data)
+}
+
+func writeProfilePictureNotFound(w http.ResponseWriter) {
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.WriteHeader(http.StatusNotFound)
 }
 
 func writeProfilePicture(w http.ResponseWriter, contentType string, etagValue string, cacheControl string, data []byte) {

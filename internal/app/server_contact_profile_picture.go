@@ -12,6 +12,7 @@ import (
 )
 
 const contactProfilePictureCacheTTL = 6 * time.Hour
+const profilePictureFailureCacheTTL = 10 * time.Minute
 const contactProfilePictureLatestCacheVersion = "latest"
 
 type waContactProfilePictureResolver interface {
@@ -57,6 +58,10 @@ func (s *Server) getWAAccountProfilePicture(ctx context.Context, selector *waapp
 	if cached, ok := s.cachedWAAccountProfilePicture(ctx, account.GetWaAccountId()); ok {
 		return cached, nil
 	}
+	accountCacheKey := accountProfilePictureCacheKey(account.GetWaAccountId())
+	if s.cachedWAProfilePictureFailure(ctx, accountCacheKey) {
+		return WAContactProfilePicture{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_MESSAGE_NOT_FOUND, "WA profile picture not found", false)
+	}
 	pnJID := accountProfilePictureJID(account)
 	if pnJID == "" {
 		return WAContactProfilePicture{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_VALIDATION_FAILED, "WA account phone is required", false)
@@ -79,6 +84,7 @@ func (s *Server) getWAAccountProfilePicture(ctx context.Context, selector *waapp
 		RemoteTimeout:        defaultContactProfilePictureTimeout,
 	})
 	if result.Err != nil {
+		s.cacheWAProfilePictureFailure(ctx, accountCacheKey)
 		logWAProfilePictureError("account", result.Err)
 		return WAContactProfilePicture{}, result.Err
 	}
@@ -96,8 +102,12 @@ func (s *Server) GetWAContactProfilePicture(ctx context.Context, contactID strin
 	if err != nil {
 		return WAContactProfilePicture{}, err
 	}
+	contactCacheKey := contactProfilePictureCacheKey(contact.GetContactId(), contactProfilePictureCacheVersion(contact.GetProfilePictureId()))
 	if cached, ok := s.cachedWAContactProfilePicture(ctx, contact); ok {
 		return cached, nil
+	}
+	if s.cachedWAProfilePictureFailure(ctx, contactCacheKey) {
+		return WAContactProfilePicture{}, NewError(waappv1.WaErrorCode_WA_ERROR_CODE_MESSAGE_NOT_FOUND, "WA profile picture not found", false)
 	}
 	loginState, err := s.activeContactResolveLoginState(ctx, contact.GetWaAccountId())
 	if err != nil {
@@ -122,6 +132,7 @@ func (s *Server) GetWAContactProfilePicture(ctx context.Context, contactID strin
 		RemoteTimeout:        defaultContactProfilePictureTimeout,
 	})
 	if result.Err != nil {
+		s.cacheWAProfilePictureFailure(ctx, contactCacheKey)
 		logWAProfilePictureError("contact", result.Err)
 		return WAContactProfilePicture{}, result.Err
 	}
@@ -186,13 +197,35 @@ func (s *Server) cacheWAProfilePicture(ctx context.Context, key string, picture 
 		return
 	}
 	_ = s.runtime.SaveTransientState(ctx, key, data, contactProfilePictureCacheTTL)
+	_ = s.runtime.DeleteTransientState(ctx, profilePictureFailureCacheKey(key))
+}
+
+func (s *Server) cachedWAProfilePictureFailure(ctx context.Context, key string) bool {
+	if s == nil || s.runtime == nil || strings.TrimSpace(key) == "" {
+		return false
+	}
+	data, err := s.runtime.GetTransientState(ctx, profilePictureFailureCacheKey(key))
+	return err == nil && len(data) > 0
+}
+
+func (s *Server) cacheWAProfilePictureFailure(ctx context.Context, key string) {
+	if s == nil || s.runtime == nil || strings.TrimSpace(key) == "" {
+		return
+	}
+	_ = s.runtime.SaveTransientState(ctx, profilePictureFailureCacheKey(key), []byte("1"), profilePictureFailureCacheTTL)
+}
+
+func profilePictureFailureCacheKey(key string) string {
+	return key + ":failure"
 }
 
 func (s *Server) deleteWAAccountProfilePictureCache(ctx context.Context, accountID string) {
 	if s == nil || s.runtime == nil || accountID == "" {
 		return
 	}
-	_ = s.runtime.DeleteTransientState(ctx, accountProfilePictureCacheKey(accountID))
+	key := accountProfilePictureCacheKey(accountID)
+	_ = s.runtime.DeleteTransientState(ctx, key)
+	_ = s.runtime.DeleteTransientState(ctx, profilePictureFailureCacheKey(key))
 }
 
 func accountProfilePictureCacheKey(accountID string) string {
