@@ -19,11 +19,12 @@ import (
 )
 
 const (
-	defaultChatdHost       = "g.whatsapp.net"
-	defaultChatdPort       = 443
-	defaultChatdMaxFrame   = 4 << 20
-	defaultChatdReadWindow = 20 * time.Second
-	defaultChatdKeepAlive  = 30 * time.Second
+	defaultChatdHost                   = "g.whatsapp.net"
+	defaultChatdPort                   = 443
+	defaultChatdMaxFrame               = 4 << 20
+	defaultChatdReadWindow             = 20 * time.Second
+	defaultChatdKeepAlive              = 30 * time.Second
+	defaultChatdPostMessageDrainWindow = 250 * time.Millisecond
 )
 
 type chatdClientConfig struct {
@@ -249,7 +250,11 @@ func (s *chatdSession) receiveBatch(input EngineMessageInput, now time.Time) ([]
 			}
 			return nil, nil, update, err
 		}
+		before := len(items)
 		items = appendReceivedItems(items, nextItems, maxMessages)
+		if len(items) > before && len(items) < maxMessages {
+			deadline = minTime(deadline, time.Now().Add(defaultChatdPostMessageDrainWindow))
+		}
 	}
 	messages, payloads := splitReceivedItems(items)
 	return messages, payloads, update, nil
@@ -378,6 +383,13 @@ func ensureChatStatic(key nativeCurveKeyPair) nativeCurveKeyPair {
 		return key
 	}
 	return newKey
+}
+
+func minTime(left time.Time, right time.Time) time.Time {
+	if right.IsZero() || left.Before(right) {
+		return left
+	}
+	return right
 }
 
 func minDuration(left time.Duration, right time.Duration) time.Duration {
