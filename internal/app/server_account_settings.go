@@ -216,7 +216,7 @@ func (s *Server) accountSettingsRunner(ctx context.Context, requestContext *waap
 }
 
 func accountSettingsUsesGatewayProxy(kind waappv1.AccountSettingsOperationKind) bool {
-	return kind != waappv1.AccountSettingsOperationKind_ACCOUNT_SETTINGS_OPERATION_KIND_ACCOUNT_PROFILE_NAME_SET
+	return kind != waappv1.AccountSettingsOperationKind_ACCOUNT_SETTINGS_OPERATION_KIND_UNSPECIFIED
 }
 
 func (s *Server) accountSettingsLoginState(ctx context.Context, selector *waappv1.AccountLoginSelector) (*waappv1.LoginState, error) {

@@ -7,8 +7,6 @@ import (
 	"crypto/cipher"
 	"crypto/hmac"
 	"crypto/sha256"
-	"crypto/sha512"
-	"encoding/binary"
 	"encoding/hex"
 	"io"
 	"strings"
@@ -524,14 +522,7 @@ func decryptNativeAppStateMutation(state *nativeState, collectionName string, mu
 		return nil, false
 	}
 	macPayload := cipherValue[:macOffset]
-	prefix := append([]byte{opByte}, []byte(collectionName)...)
-	macInput := make([]byte, 0, len(prefix)+len(macPayload)+8)
-	macInput = append(macInput, prefix...)
-	macInput = append(macInput, macPayload...)
-	macInput = binary.BigEndian.AppendUint64(macInput, uint64(len(prefix)))
-	mac := hmac.New(sha512.New, keys.valueMAC)
-	_, _ = mac.Write(macInput)
-	if !hmac.Equal(dataMAC, mac.Sum(nil)[:32]) {
+	if !validNativeAppStateMutationMAC(keys.valueMAC, opByte, macPayload, dataMAC, mutation.keyID, collectionName) {
 		return nil, false
 	}
 	block, err := aes.NewCipher(keys.valueEncryption)
@@ -548,7 +539,7 @@ func decryptNativeAppStateMutation(state *nativeState, collectionName string, mu
 	if len(index) == 0 {
 		return nil, false
 	}
-	mac = hmac.New(sha256.New, keys.indexMAC)
+	mac := hmac.New(sha256.New, keys.indexMAC)
 	_, _ = mac.Write(index)
 	if !hmac.Equal(mutation.record.index, mac.Sum(nil)) {
 		return nil, false
@@ -560,6 +551,8 @@ type nativeAppStateMutationKeys struct {
 	indexMAC        []byte
 	valueEncryption []byte
 	valueMAC        []byte
+	snapshotMAC     []byte
+	patchMAC        []byte
 }
 
 func deriveNativeAppStateMutationKeys(keyData []byte) (nativeAppStateMutationKeys, bool) {
@@ -575,6 +568,8 @@ func deriveNativeAppStateMutationKeys(keyData []byte) (nativeAppStateMutationKey
 		indexMAC:        append([]byte{}, out[:32]...),
 		valueEncryption: append([]byte{}, out[32:64]...),
 		valueMAC:        append([]byte{}, out[64:96]...),
+		snapshotMAC:     append([]byte{}, out[96:128]...),
+		patchMAC:        append([]byte{}, out[128:160]...),
 	}, true
 }
 

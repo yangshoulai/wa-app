@@ -130,8 +130,8 @@ For wa-app implementation, the safe ordering is:
 - The registration/login payload also has a push-name field, but that is not the post-registration configuration interface.
 - Do not expose raw JIDs, image bytes, app-state blobs, mutation keys, or profile-sync metadata in logs or public API responses.
 
-## 2026-06-09 implementation status
+## 2026-06-10 implementation status
 
 - `SetAccountProfilePicture` and `RemoveAccountProfilePicture` are wired through the service contract, dashboard BFF, account info UI, and native `w:profile:picture` IQ path.
 - Picture upload accepts JPEG, PNG, or WebP bytes up to the same 2 MiB profile-picture bound used by the resolver. It does not log or persist uploaded image bytes.
-- `SetAccountProfileName` is exposed as a first-class account settings operation, but the native runner returns `UNSUPPORTED_OPERATION` until the syncd/app-state mutation sender is implemented. It intentionally does not fake success through the registration push-name payload or an unverified IQ shape.
+- `SetAccountProfileName` is wired through the dashboard and native `critical_block` app-state patch sender using `pushNameSetting`. It requires an available app-state sync key for the active login state and does not fake success through the registration push-name payload or an unverified IQ shape.

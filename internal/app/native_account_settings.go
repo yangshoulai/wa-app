@@ -8,9 +8,6 @@ import (
 )
 
 func (e *NativeEngine) ApplyAccountSettings(ctx context.Context, input EngineAccountSettingsInput) EngineAccountSettingsResult {
-	if input.Kind == waappv1.AccountSettingsOperationKind_ACCOUNT_SETTINGS_OPERATION_KIND_ACCOUNT_PROFILE_NAME_SET {
-		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: NewError(waappv1.WaErrorCode_WA_ERROR_CODE_UNSUPPORTED_OPERATION, "WA profile name update requires app-state mutation sending and is not enabled", false)}
-	}
 	state, err := e.loadState(ctx, input.ClientProfileID)
 	if err != nil {
 		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: err}
@@ -22,6 +19,9 @@ func (e *NativeEngine) ApplyAccountSettings(ctx context.Context, input EngineAcc
 	proxyURL, err := e.proxyURL()
 	if err != nil {
 		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: err}
+	}
+	if input.Kind == waappv1.AccountSettingsOperationKind_ACCOUNT_SETTINGS_OPERATION_KIND_ACCOUNT_PROFILE_NAME_SET {
+		return e.applyAccountProfileName(ctx, input, state, proxyURL)
 	}
 	request := buildAccountSettingsIQ(e.ids.NewID("waiq_"), input)
 	if request.Tag == "" {
@@ -36,6 +36,33 @@ func (e *NativeEngine) ApplyAccountSettings(ctx context.Context, input EngineAcc
 		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: NewError(waappv1.WaErrorCode_WA_ERROR_CODE_REJECTED, "native account settings request failed", accountSettingsRetryableError(err))}
 	}
 	return accountSettingsResultFromIQ(input.Kind, response)
+}
+
+func (e *NativeEngine) applyAccountProfileName(ctx context.Context, input EngineAccountSettingsInput, state nativeState, proxyURL string) EngineAccountSettingsResult {
+	request, collection, err := buildNativePushNamePatch(&state, input.DisplayName)
+	if err != nil {
+		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: err}
+	}
+	request.Attrs["id"] = e.ids.NewID("waiq_")
+	client := newChatdClient(chatdConfigForState(proxyURL, state, defaultAccountIQTimeout))
+	response, update, err := client.sendAccountIQ(ctx, state, input, defaultWAAppVersion, request)
+	changed := applyChatdSessionUpdateState(&state, update)
+	if err != nil {
+		if changed {
+			_ = e.saveState(ctx, input.ClientProfileID, state)
+		}
+		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: NewError(waappv1.WaErrorCode_WA_ERROR_CODE_REJECTED, "native account profile name request failed", accountSettingsRetryableError(err))}
+	}
+	if err := chatdIQError(response); err != nil {
+		if changed {
+			_ = e.saveState(ctx, input.ClientProfileID, state)
+		}
+		return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_REJECTED, Err: err}
+	}
+	state.ensureMaps()
+	state.AppState.Collections[waAppStatePushNameCollection] = collection
+	_ = e.saveState(ctx, input.ClientProfileID, state)
+	return EngineAccountSettingsResult{Status: waappv1.AccountSettingsOperationStatus_ACCOUNT_SETTINGS_OPERATION_STATUS_ACCEPTED}
 }
 
 func buildAccountSettingsIQ(id string, input EngineAccountSettingsInput) chatdNode {

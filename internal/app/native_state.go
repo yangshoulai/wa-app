@@ -100,7 +100,8 @@ type nativeSignalSession struct {
 }
 
 type nativeAppState struct {
-	Keys map[string]nativeAppStateKey `json:"keys,omitempty"`
+	Keys        map[string]nativeAppStateKey        `json:"keys,omitempty"`
+	Collections map[string]nativeAppStateCollection `json:"collections,omitempty"`
 }
 
 type nativeAppStateKey struct {
@@ -108,6 +109,12 @@ type nativeAppStateKey struct {
 	KeyData     string `json:"key_data"`
 	Fingerprint string `json:"fingerprint,omitempty"`
 	Timestamp   int64  `json:"timestamp,omitempty"`
+}
+
+type nativeAppStateCollection struct {
+	Version        uint64            `json:"version,omitempty"`
+	Hash           string            `json:"hash,omitempty"`
+	IndexValueMACs map[string]string `json:"index_value_macs,omitempty"`
 }
 
 type nativeReceiverChain struct {
@@ -167,6 +174,9 @@ func (s *nativeState) ensureMaps() {
 	}
 	if s.AppState.Keys == nil {
 		s.AppState.Keys = map[string]nativeAppStateKey{}
+	}
+	if s.AppState.Collections == nil {
+		s.AppState.Collections = map[string]nativeAppStateCollection{}
 	}
 }
 
