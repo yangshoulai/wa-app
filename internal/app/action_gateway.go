@@ -592,6 +592,13 @@ func (g *actionGateway) registrationRequestRunner(ctx context.Context, payload m
 	if actionProxyURL(payload) != "" {
 		return engine, DynamicProxyRoute{}, false, nil
 	}
+	if route, ok := g.staticRegistrationProxyRoute(); ok {
+		proxied, err := engine.WithProxyURL(route.ProxyURL)
+		if err != nil {
+			return nil, DynamicProxyRoute{}, false, err
+		}
+		return proxied, route, true, nil
+	}
 	if g == nil || g.server == nil || g.server.proxyRuntime == nil {
 		return engine, DynamicProxyRoute{}, false, nil
 	}
@@ -614,6 +621,13 @@ func (g *actionGateway) registrationSubmitRunner(ctx context.Context, payload ma
 	}
 	if actionProxyURL(payload) != "" {
 		return engine, DynamicProxyRoute{}, false, nil
+	}
+	if route, ok := g.staticRegistrationProxyRoute(); ok {
+		proxied, err := engine.WithProxyURL(route.ProxyURL)
+		if err != nil {
+			return nil, DynamicProxyRoute{}, false, err
+		}
+		return proxied, route, true, nil
 	}
 	verificationRequestID := textField(payload, "verification_request_id")
 	route, err := g.loadRegistrationProxyRoute(ctx, verificationRequestID)
@@ -659,8 +673,24 @@ func (g *actionGateway) registrationGatewayProxy(ctx context.Context, payload ma
 	})
 }
 
+func (g *actionGateway) staticRegistrationProxyRoute() (DynamicProxyRoute, bool) {
+	if g == nil || g.server == nil {
+		return DynamicProxyRoute{}, false
+	}
+	if strings.TrimSpace(g.server.registrationProxyURL) != "" {
+		return staticProxyRoute("registration", g.server.registrationProxyURL, staticRegistrationProxyMode), true
+	}
+	if strings.TrimSpace(g.server.commonProxyURL) != "" {
+		return staticProxyRoute("common", g.server.commonProxyURL, staticCommonProxyMode), true
+	}
+	return DynamicProxyRoute{}, false
+}
+
 func (g *actionGateway) saveRegistrationProxyRoute(ctx context.Context, verificationRequestID string, route DynamicProxyRoute) error {
 	if strings.TrimSpace(verificationRequestID) == "" || strings.TrimSpace(route.ProxyURL) == "" {
+		return nil
+	}
+	if isStaticProxyRoute(route) {
 		return nil
 	}
 	now := time.Now().UTC()
@@ -721,6 +751,9 @@ func (g *actionGateway) releaseProxyRoute(ctx context.Context, route DynamicProx
 	if g == nil || g.server == nil {
 		return
 	}
+	if isStaticProxyRoute(route) {
+		return
+	}
 	g.server.releaseGatewayProxyRoute(ctx, route, "WA_REGISTRATION")
 }
 
@@ -744,12 +777,17 @@ func registrationProxyRouteMap(route DynamicProxyRoute, managed bool) map[string
 		return map[string]any{}
 	}
 	result := map[string]any{
-		"proxy_mode":     firstNonEmpty(route.ProxyMode, "US_STICKY_DYNAMIC_IP"),
-		"country_code":   firstNonEmpty(route.CountryCode, "US"),
-		"account_id":     route.AccountID,
-		"route_id":       route.RouteID,
-		"proxy_url":      route.ProxyURL,
-		"proxy_username": route.Username,
+		"proxy_mode":   firstNonEmpty(route.ProxyMode, "US_STICKY_DYNAMIC_IP"),
+		"country_code": firstNonEmpty(route.CountryCode, "US"),
+	}
+	if strings.TrimSpace(route.AccountID) != "" {
+		result["account_id"] = route.AccountID
+	}
+	if strings.TrimSpace(route.RouteID) != "" {
+		result["route_id"] = route.RouteID
+	}
+	if strings.TrimSpace(route.Username) != "" {
+		result["proxy_username"] = route.Username
 	}
 	if !route.ExpiresAt.IsZero() {
 		result["expires_at"] = route.ExpiresAt.UTC().Format(time.RFC3339)

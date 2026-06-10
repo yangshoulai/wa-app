@@ -48,6 +48,7 @@ func main() {
 		}
 	}
 	service := app.NewServer(store, runtime, engine, clock, ids)
+	service.SetStaticProxyURLs(cfg.CommonProxy, cfg.NumberProbeProxy, cfg.RegistrationProxy)
 	listener, err := net.Listen("tcp", cfg.ListenAddr)
 	if err != nil {
 		log.Fatalf("listen %s: %v", cfg.ListenAddr, err)

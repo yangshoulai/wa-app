@@ -26,6 +26,9 @@ type Server struct {
 	ids     IDGenerator
 
 	proxyRuntime                 *DynamicProxyRuntime
+	commonProxyURL               string
+	numberProbeProxyURL          string
+	registrationProxyURL         string
 	longProxyUsername            string
 	numberProbeProxyUsername     string
 	registrationProxyUsername    string
@@ -48,6 +51,12 @@ func NewServer(store Store, runtime RuntimeState, runner ProtocolEngine, clock C
 
 func (s *Server) SetDynamicProxyRuntime(proxyRuntime *DynamicProxyRuntime) {
 	s.proxyRuntime = proxyRuntime
+}
+
+func (s *Server) SetStaticProxyURLs(common string, numberProbe string, registration string) {
+	s.commonProxyURL = strings.TrimSpace(common)
+	s.numberProbeProxyURL = strings.TrimSpace(numberProbe)
+	s.registrationProxyURL = strings.TrimSpace(registration)
 }
 
 func (s *Server) SetGatewayProxyUsernames(longConnection string, numberProbe string, registration string, accountSettings string, loginStateCheck string) {

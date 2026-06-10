@@ -123,6 +123,16 @@ func (s *Server) numberProbeProxy(ctx context.Context, payload map[string]any, c
 		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": "SHARED_DYNAMIC_IP", "country_code": firstNonEmpty(countryCode, "UNKNOWN"), "account_id": route.AccountID, "route_id": route.RouteID}
 		return route, proxyURL, proxy, func() {}, nil
 	}
+	if s != nil && strings.TrimSpace(s.numberProbeProxyURL) != "" {
+		proxyURL := strings.TrimSpace(s.numberProbeProxyURL)
+		route := staticProxyRoute("number-probe", proxyURL, staticNumberProbeProxyMode)
+		return route, proxyURL, staticProxyResult(staticNumberProbeProxyMode), func() {}, nil
+	}
+	if s != nil && strings.TrimSpace(s.commonProxyURL) != "" {
+		proxyURL := strings.TrimSpace(s.commonProxyURL)
+		route := staticProxyRoute("common", proxyURL, staticCommonProxyMode)
+		return route, proxyURL, staticProxyResult(staticCommonProxyMode), func() {}, nil
+	}
 	if s == nil || s.proxyRuntime == nil {
 		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": "DIRECT", "country_code": "LOCAL"}
 		return DynamicProxyRoute{}, "", proxy, func() {}, nil

@@ -51,6 +51,11 @@ docker compose up -d
 - `latest`：快速验证（取决于远端 latest 标签）
 - `sha-<短hash>` 或固定版本号：生产更推荐固定版本，避免漂移
 
+代理配置：
+- `WA_COMMON_PROXY`：默认 WA 出站代理。
+- `WA_NUMBER_PROBE_PROXY`：号码/SMS 探测代理；为空时使用 `WA_COMMON_PROXY`。
+- `WA_REGISTRATION_PROXY`：注册与 OTP 提交代理；为空时使用 `WA_COMMON_PROXY`。
+
 常用维护命令：
 
 ```sh

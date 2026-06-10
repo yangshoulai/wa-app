@@ -11,6 +11,8 @@ type Config struct {
 	DashboardHTTPAddr  string `env:"WA_APP_DASHBOARD_HTTP_ADDR" envDefault:":8080"`
 	DashboardStaticDir string `env:"WA_APP_DASHBOARD_STATIC_DIR" envDefault:"/app/dashboard/wa"`
 	CommonProxy        string `env:"WA_COMMON_PROXY"`
+	NumberProbeProxy   string `env:"WA_NUMBER_PROBE_PROXY"`
+	RegistrationProxy  string `env:"WA_REGISTRATION_PROXY"`
 	PGDSN              string `env:"WA_APP_PG_DSN"`
 	RedisURL           string `env:"WA_APP_REDIS_URL"`
 	DataDir            string `env:"WA_APP_DATA_DIR" envDefault:"/var/lib/wa-app"`
