@@ -191,7 +191,7 @@ func (s *PostgresStore) queryWAAccountPage(ctx context.Context, cursor keysetCur
 }
 
 func (s *PostgresStore) getWAAccount(ctx context.Context, where string, args ...any) (*waappv1.WAAccount, error) {
-	row := s.pool.QueryRow(ctx, `SELECT wa_account_id,display_name,e164_number,country_calling_code,national_number,country_iso2,status,two_factor_auth_configured,two_factor_email_configured,created_at,updated_at FROM wa_accounts WHERE `+where, args...)
+	row := s.pool.QueryRow(ctx, `SELECT wa_account_id,display_name,e164_number,country_calling_code,national_number,country_iso2,status,two_factor_auth_configured,two_factor_email_configured,two_factor_email_address,two_factor_email_verified,two_factor_email_confirmed,created_at,updated_at FROM wa_accounts WHERE `+where, args...)
 	var r waAccountRow
 	if err := row.Scan(&r.id, &r.displayName, &r.e164, &r.cc, &r.national, &r.iso2, &r.status, &r.twoFactorConfigured, &r.twoFactorEmailConfigured, &r.twoFactorEmailAddress, &r.twoFactorEmailVerified, &r.twoFactorEmailConfirmed, &r.createdAt, &r.updatedAt); err != nil {
 		return nil, notFound(err, waappv1.WaErrorCode_WA_ERROR_CODE_WA_ACCOUNT_NOT_FOUND, "WA account not found")

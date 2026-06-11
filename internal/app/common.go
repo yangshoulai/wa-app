@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,6 +25,11 @@ func (SystemClock) Now() time.Time { return time.Now().UTC() }
 type IDGenerator interface{ NewID(prefix string) string }
 
 type RandomIDGenerator struct{}
+
+var (
+	urlCredentialPattern       = regexp.MustCompile(`([A-Za-z][A-Za-z0-9+.-]*://)([^/@\s]+)@`)
+	sensitiveAssignmentPattern = regexp.MustCompile(`(?i)\b(authkey|token|cookie|password|passwd|secret|otp)=([^&\s]+)`)
+)
 
 func (RandomIDGenerator) NewID(prefix string) string {
 	var b [12]byte
@@ -60,7 +66,7 @@ func ToProtoError(err error) *waappv1.WaError {
 	}
 	return &waappv1.WaError{
 		Code:      waappv1.WaErrorCode_WA_ERROR_CODE_INTERNAL,
-		Message:   "wa-app operation failed",
+		Message:   safeInternalErrorMessage(err),
 		Retryable: isRetryableInternalError(err),
 	}
 }
@@ -230,4 +236,21 @@ func hasRetryableErrorMarker(message string) bool {
 		}
 	}
 	return false
+}
+
+func safeInternalErrorMessage(err error) string {
+	if err == nil {
+		return "wa-app operation failed"
+	}
+	message := strings.TrimSpace(strings.ReplaceAll(strings.ReplaceAll(err.Error(), "\n", " "), "\r", " "))
+	if message == "" {
+		return "wa-app operation failed"
+	}
+	message = urlCredentialPattern.ReplaceAllString(message, "${1}<redacted>@")
+	message = sensitiveAssignmentPattern.ReplaceAllString(message, "${1}=<redacted>")
+	const maxErrorMessageLength = 500
+	if len([]rune(message)) > maxErrorMessageLength {
+		return string([]rune(message)[:maxErrorMessageLength]) + "..."
+	}
+	return message
 }

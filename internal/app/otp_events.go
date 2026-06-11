@@ -62,5 +62,5 @@ func sanitizeLogError(err error) error {
 	if err == nil {
 		return nil
 	}
-	return fmt.Errorf("%s", strings.ReplaceAll(err.Error(), "\n", " "))
+	return fmt.Errorf("%s", safeInternalErrorMessage(err))
 }

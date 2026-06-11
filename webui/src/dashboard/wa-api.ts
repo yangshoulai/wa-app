@@ -38,60 +38,60 @@ function redirectToLogin() {
 export function getWaConnections(filters: WaConnectionFilters = {}) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(filters)) if (value) params.set(key, value);
-  return api<GetLongConnectionStatusResponse>(`/api/wa/long-connections${params.size ? `?${params}` : ''}`);
+  return getWaResponse<GetLongConnectionStatusResponse>(`/api/wa/long-connections${params.size ? `?${params}` : ''}`);
 }
 
 export function getWaAccounts(cursor = '') {
   const params = new URLSearchParams({ limit: String(ACCOUNT_PAGE_SIZE) });
   if (cursor) params.set('cursor', cursor);
-  return api<ListWAAccountsResponse>(`/api/wa/accounts?${params}`);
+  return getWaResponse<ListWAAccountsResponse>(`/api/wa/accounts?${params}`);
 }
 
 export function getWaAccountOtpMessages(waAccountId: string, cursor = '') {
   const params = new URLSearchParams({ wa_account_id: waAccountId, limit: '20' });
   if (cursor) params.set('cursor', cursor);
-  return api<ListAccountOtpMessagesResponse>(`/api/wa/account-otp-messages?${params}`);
+  return getWaResponse<ListAccountOtpMessagesResponse>(`/api/wa/account-otp-messages?${params}`);
 }
 
 export function getWaClientProfiles(waAccountId: string, cursor = '') {
   const params = new URLSearchParams({ wa_account_id: waAccountId, limit: '20' });
   if (cursor) params.set('cursor', cursor);
-  return api<ListClientProfilesResponse>(`/api/wa/client-profiles?${params}`);
+  return getWaResponse<ListClientProfilesResponse>(`/api/wa/client-profiles?${params}`);
 }
 
 export type MarkWaMessagesReadInput = { accountMessageIds?: string[]; contactRef?: string; localOnly?: boolean };
 
 export function markWaMessagesRead(waAccountId: string, input: MarkWaMessagesReadInput) {
-  return api<MarkAccountMessagesReadResponse>('/api/wa/messages/read', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, account_message_ids: input.accountMessageIds || [], contact_ref: input.contactRef || '', local_only: Boolean(input.localOnly) }) });
+  return mutateWaResponse<MarkAccountMessagesReadResponse>('/api/wa/messages/read', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, account_message_ids: input.accountMessageIds || [], contact_ref: input.contactRef || '', local_only: Boolean(input.localOnly) }) });
 }
 
 export function deleteWaMessagesForMe(waAccountId: string, accountMessageIds: string[]) {
-  return api<DeleteAccountMessagesResponse>('/api/wa/messages/delete', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, account_message_ids: accountMessageIds, mode: 'for_me' }) });
+  return mutateWaResponse<DeleteAccountMessagesResponse>('/api/wa/messages/delete', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, account_message_ids: accountMessageIds, mode: 'for_me' }) });
 }
 
 export function sendWaTextMessage(waAccountId: string, contactRef: string, text: string) {
-  return api<SendTextMessageResponse>('/api/wa/messages/send', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, contact_ref: contactRef, text }) });
+  return mutateWaResponse<SendTextMessageResponse>('/api/wa/messages/send', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, contact_ref: contactRef, text }) });
 }
 
 export function getWaMessages(waAccountId: string, contactRef: string, cursor = '') {
   const params = new URLSearchParams({ wa_account_id: waAccountId, contact_ref: contactRef, limit: '100', include_sensitive_text: 'true' });
   if (cursor) params.set('cursor', cursor);
-  return api<ListAccountMessagesResponse>(`/api/wa/messages?${params}`);
+  return getWaResponse<ListAccountMessagesResponse>(`/api/wa/messages?${params}`);
 }
 
 export function getWaContacts(waAccountId: string, cursor = '') {
   const params = new URLSearchParams({ wa_account_id: waAccountId, limit: '500' });
   if (cursor) params.set('cursor', cursor);
-  return api<ListWAContactsResponse>(`/api/wa/contacts?${params}`);
+  return getWaResponse<ListWAContactsResponse>(`/api/wa/contacts?${params}`);
 }
 
 export function resolveWaContacts(waAccountId: string, jids: string[]) {
-  return api<ResolveWAContactsResponse>('/api/wa/contacts/resolve', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, jids, limit: jids.length }) });
+  return mutateWaResponse<ResolveWAContactsResponse>('/api/wa/contacts/resolve', { method: 'POST', body: JSON.stringify({ wa_account_id: waAccountId, jids, limit: jids.length }) });
 }
 
 export function deleteWaContact(waAccountId: string, contactID: string) {
   const params = new URLSearchParams({ wa_account_id: waAccountId });
-  return api<DeleteWAContactResponse>(`/api/wa/contacts/${encodeURIComponent(contactID)}?${params}`, { method: 'DELETE' });
+  return mutateWaResponse<DeleteWAContactResponse>(`/api/wa/contacts/${encodeURIComponent(contactID)}?${params}`, { method: 'DELETE' });
 }
 
 export async function deleteWaAccount(account: WAAccount | string) {
@@ -161,5 +161,15 @@ function waAccountSettingsSelector(account: WAAccount) {
 function requireAccountSettingsResponse<T extends { error?: { message?: string }; operation?: { error?: { message?: string } } }>(resp: T) {
   const message = resp.error?.message || resp.operation?.error?.message;
   if (message) throw new Error(message);
+  return resp;
+}
+function getWaResponse<T extends { error?: { message?: string } }>(path: string) {
+  return api<T>(path).then(requireWaResponse);
+}
+function mutateWaResponse<T extends { error?: { message?: string } }>(path: string, init: RequestInit) {
+  return api<T>(path, init).then(requireWaResponse);
+}
+function requireWaResponse<T extends { error?: { message?: string } }>(resp: T) {
+  if (resp.error?.message) throw new Error(resp.error.message);
   return resp;
 }
