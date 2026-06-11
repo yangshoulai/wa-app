@@ -69,7 +69,7 @@ export function WaAccountProfileSettings({ account, onDone, onError, onAvatarCha
     if (fileInput.current) fileInput.current.value = '';
   }, [accountID]);
   return (
-    <section className="rounded-xl border border-border bg-card p-3">
+    <section className="grid gap-3">
       <div className="flex items-center gap-3">
         <Button className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full bg-muted/60 p-0 hover:bg-muted disabled:cursor-not-allowed disabled:opacity-70" variant="ghost" type="button" disabled={pictureBusy} title="更换头像" aria-label="更换头像" onClick={() => { if (fileInput.current) fileInput.current.value = ''; fileInput.current?.click(); }}>
           {picture ? <AvatarPreview editor={editor} image={picture} onReady={(dataURL) => pictureMutation.mutate({ dataURL, file: picture })} onError={(message) => { resetPictureSelection(); onError(message); }} /> : <StoredAvatar src={activePicture || remoteAvatar} onError={() => setRemoteFailed(true)} />}
