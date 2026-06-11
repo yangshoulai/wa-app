@@ -57,9 +57,12 @@ func main() {
 	service := app.NewServer(store, runtime, engine, clock, ids)
 	service.SetStaticProxyURLs(cfg.CommonProxy, cfg.NumberProbeProxy, cfg.RegistrationProxy)
 	authConfig := newDashboardAuthConfig(cfg.DashboardAuthPass)
-	listener, err := net.Listen("tcp", defaultGRPCListenAddr)
+	grpcListenAddr := configValue(cfg.GRPCListenAddr, defaultGRPCListenAddr)
+	dashboardHTTPAddr := configValue(cfg.DashboardHTTPAddr, defaultDashboardHTTPAddr)
+	dashboardStaticDir := configValue(cfg.DashboardStaticDir, defaultDashboardStaticDir)
+	listener, err := net.Listen("tcp", grpcListenAddr)
 	if err != nil {
-		log.Fatalf("listen %s: %v", defaultGRPCListenAddr, err)
+		log.Fatalf("listen %s: %v", grpcListenAddr, err)
 	}
 	server := grpc.NewServer()
 	waappv1.RegisterWaDiscoveryServiceServer(server, service)
@@ -76,7 +79,7 @@ func main() {
 
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
-		log.Printf("wa-app-service listening on %s", defaultGRPCListenAddr)
+		log.Printf("wa-app-service listening on %s", grpcListenAddr)
 		if err := server.Serve(listener); err != nil && groupCtx.Err() == nil {
 			return err
 		}
@@ -88,7 +91,7 @@ func main() {
 		return nil
 	})
 	group.Go(func() error {
-		return runDashboardHTTP(groupCtx, defaultDashboardHTTPAddr, defaultDashboardStaticDir, service, newWAActionHandler(service), authConfig)
+		return runDashboardHTTP(groupCtx, dashboardHTTPAddr, dashboardStaticDir, service, newWAActionHandler(service), authConfig)
 	})
 	group.Go(func() error {
 		return service.RunLongConnections(groupCtx)
@@ -97,6 +100,13 @@ func main() {
 		stop()
 		log.Fatalf("wa-app-service failed: %v", err)
 	}
+}
+
+func configValue(value string, fallback string) string {
+	if trimmed := strings.TrimSpace(value); trimmed != "" {
+		return trimmed
+	}
+	return fallback
 }
 
 func newDurableStore(ctx context.Context, cfg config.Config) (app.Store, error) {
