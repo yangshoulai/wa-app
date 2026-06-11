@@ -34,8 +34,7 @@ import {
 type RailProps = { accounts: WAAccount[]; selectedID: string; avatarVersion: string; connections: Map<string, LongConnectionState>; loading: boolean; connectionsLoading: boolean; hasNextPage: boolean; loadingMore: boolean; onLoadMore: () => void };
 type AccountItemProps = { account: WAAccount; selected: boolean; avatarVersion: string; connection?: LongConnectionState; loading: boolean };
 
-const accountButtonClass = 'h-12 gap-2 p-1! group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1!';
-const footerButtonClass = 'group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:justify-center';
+const railButtonClass = 'h-12 gap-2 p-1! group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1!';
 const collapsedTextClass = 'group-data-[collapsible=icon]:hidden';
 
 export function WaAccountRail({ accounts, selectedID, avatarVersion, connections, loading, connectionsLoading, hasNextPage, loadingMore, onLoadMore }: RailProps) {
@@ -86,7 +85,7 @@ function AccountItem({ account, selected, avatarVersion, connection, loading }: 
   const title = waAccountPhoneLabel(account);
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild size="lg" isActive={selected} tooltip={title} className={accountButtonClass}>
+      <SidebarMenuButton asChild size="lg" isActive={selected} tooltip={title} className={railButtonClass}>
         <NavLink to={waChatsPath(id)} title={title} aria-label={title}>
           <span className="relative shrink-0">
             <WaAccountAvatar account={account} version={avatarVersion} size="md" />
@@ -104,14 +103,14 @@ function AccountItem({ account, selected, avatarVersion, connection, loading }: 
 function RailFooter({ selectedID }: { selectedID: string }) {
   return (
     <SidebarMenu>
-      <SidebarMenuItem>{selectedID ? <FooterLink title="账号信息" to={waAccountPath(selectedID)}><Info /></FooterLink> : <SidebarMenuButton size="lg" disabled tooltip="账号信息" aria-label="账号信息" className={footerButtonClass}><Info /><span className={collapsedTextClass}>账号信息</span></SidebarMenuButton>}</SidebarMenuItem>
+      <SidebarMenuItem>{selectedID ? <FooterLink title="账号信息" to={waAccountPath(selectedID)}><Info /></FooterLink> : <SidebarMenuButton size="lg" disabled tooltip="账号信息" aria-label="账号信息" className={railButtonClass}><Info /><span className={collapsedTextClass}>账号信息</span></SidebarMenuButton>}</SidebarMenuItem>
       <SidebarMenuItem><FooterLink title="添加账号" to="/accounts/new"><Plus /></FooterLink></SidebarMenuItem>
     </SidebarMenu>
   );
 }
 
 function FooterLink({ children, title, to }: { children: ReactNode; title: string; to: string }) {
-  return <SidebarMenuButton asChild size="lg" tooltip={title} className={footerButtonClass}><Link to={to} title={title} aria-label={title}>{children}<span className={collapsedTextClass}>{title}</span></Link></SidebarMenuButton>;
+  return <SidebarMenuButton asChild size="lg" tooltip={title} className={railButtonClass}><Link to={to} title={title} aria-label={title}>{children}<span className={collapsedTextClass}>{title}</span></Link></SidebarMenuButton>;
 }
 
 function LoadMoreButton({ loading, onLoadMore }: { loading: boolean; onLoadMore: () => void }) {
