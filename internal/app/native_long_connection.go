@@ -72,7 +72,7 @@ func (e *longConnectionNativeEngine) ReceiveMessageBatch(ctx context.Context, in
 	now := e.clock.Now()
 	messages, payloads, update, drained := e.drainPendingLocked(input)
 	if !drained {
-		messages, payloads, update, err = session.receiveBatch(input, now)
+		messages, payloads, update, err = receiveChatdBatchWithContext(ctx, session, input, now)
 		if err != nil {
 			e.closeLocked()
 			session, retryErr := e.ensureSessionWithTimeoutLocked(ctx, input)
@@ -80,7 +80,7 @@ func (e *longConnectionNativeEngine) ReceiveMessageBatch(ctx context.Context, in
 				return EngineMessageBatchResult{Err: chatdReceiveError(retryErr)}
 			}
 			now = e.clock.Now()
-			messages, payloads, update, err = session.receiveBatch(input, now)
+			messages, payloads, update, err = receiveChatdBatchWithContext(ctx, session, input, now)
 			if err != nil {
 				e.closeLocked()
 				return EngineMessageBatchResult{Err: chatdReceiveError(err)}
@@ -125,7 +125,7 @@ func (e *longConnectionNativeEngine) sendIQ(ctx context.Context, state nativeSta
 		e.closeLocked()
 		return chatdNode{}, chatdSessionUpdate{}, err
 	}
-	response, items, update, err := session.sendIQ(ctx, input, request, contextBoundTimeout(ctx, defaultContactProfilePictureTimeout), timeoutMessage)
+	response, items, update, err := sendChatdIQWithContext(ctx, session, input, request, contextBoundTimeout(ctx, defaultContactProfilePictureTimeout), timeoutMessage)
 	e.bufferPendingLocked(items, update)
 	if err != nil {
 		e.closeLocked()
@@ -332,6 +332,25 @@ func (e *longConnectionNativeEngine) closeLocked() error {
 	err := e.session.Close()
 	e.session = nil
 	return err
+}
+
+func receiveChatdBatchWithContext(ctx context.Context, session *chatdSession, input EngineMessageInput, now time.Time) ([]*waappv1.InboundMessage, []chatdEncPayload, chatdSessionUpdate, error) {
+	stopContextClose := closeChatdSessionOnContext(ctx, session)
+	defer stopContextClose()
+	return session.receiveBatch(input, now)
+}
+
+func sendChatdIQWithContext(ctx context.Context, session *chatdSession, input EngineMessageInput, request chatdNode, timeout time.Duration, timeoutMessage string) (chatdNode, []chatdReceivedItem, chatdSessionUpdate, error) {
+	stopContextClose := closeChatdSessionOnContext(ctx, session)
+	defer stopContextClose()
+	return session.sendIQ(ctx, input, request, timeout, timeoutMessage)
+}
+
+func closeChatdSessionOnContext(ctx context.Context, session *chatdSession) func() {
+	if session == nil {
+		return func() {}
+	}
+	return closeChatdConnOnContext(ctx, session.conn)
 }
 
 var _ ProtocolEngine = (*longConnectionNativeEngine)(nil)

@@ -146,6 +146,8 @@ func (c *chatdClient) openEndpointSession(ctx context.Context, endpoint chatdEnd
 	if err != nil {
 		return nil, chatdPhase("chatd dial", err)
 	}
+	stopContextClose := closeChatdConnOnContext(ctx, conn)
+	defer stopContextClose()
 	_ = conn.SetDeadline(time.Now().Add(c.cfg.Timeout))
 	rw := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
 	keys, err := doNoiseHandshake(rw, privateKey, publicKey, loginPayload, routingInfo, c.cfg.MaxFrameBytes)
@@ -210,6 +212,23 @@ func (s *chatdSession) Close() error {
 		return nil
 	}
 	return s.conn.Close()
+}
+
+func closeChatdConnOnContext(ctx context.Context, conn net.Conn) func() {
+	if ctx == nil || conn == nil {
+		return func() {}
+	}
+	done := make(chan struct{})
+	go func() {
+		select {
+		case <-ctx.Done():
+			_ = conn.Close()
+		case <-done:
+		}
+	}()
+	return func() {
+		close(done)
+	}
 }
 
 func (s *chatdSession) update() chatdSessionUpdate {
