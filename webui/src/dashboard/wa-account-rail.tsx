@@ -100,15 +100,17 @@ function RailSearch({ value, onChange }: { value: string; onChange: (value: stri
 }
 
 function AccountItem({ account, selected, avatarVersion, connection, loading }: AccountItemProps) {
+  const { state } = useSidebar();
   const id = waAccountID(account);
   const title = waAccountTitle(account);
+  const avatarSize = state === 'collapsed' ? 'lg' : 'xs';
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild size="lg" isActive={selected} tooltip={title} className={`h-14 ${collapsedIconButtonClass}`}>
         <NavLink to={waChatsPath(id)} title={title} aria-label={title}>
           <span className="relative shrink-0">
-            <WaAccountAvatar account={account} version={avatarVersion} size="lg" />
-            <WaConnectionDot className="absolute -bottom-0.5 -right-0.5 ring-2 ring-sidebar" connection={connection} loading={loading} />
+            <WaAccountAvatar account={account} version={avatarVersion} size={avatarSize} />
+            <WaConnectionDot className="absolute bottom-0 right-0" connection={connection} loading={loading} />
           </span>
           <span className={`min-w-0 flex-1 ${collapsedTextClass}`}>
             <span className="block whitespace-nowrap text-sm font-medium tabular-nums">{title}</span>
