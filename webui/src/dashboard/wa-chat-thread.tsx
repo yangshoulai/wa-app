@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { AssistantRuntimeProvider, MessagePrimitive, ThreadPrimitive, useExternalStoreRuntime, useMessage, type AppendMessage } from '@assistant-ui/react';
 import { Loader2, Send } from 'lucide-react';
 import { WhatsAppIcon } from './wa-brand-icon';
+import { WaContactAvatar } from './wa-contact-avatar';
 import { toAssistantMessage, type WaChatEvent, type WaChatMeta, type WaContact } from './wa-chat-model';
 import { WaMessageContent } from './wa-message-content';
 import { Badge, Button, Input } from './ui';
@@ -29,14 +30,14 @@ export function WaChatThread({ contact, events, loading, sending, error, onSendM
 }
 
 function ChatHeader({ contact, loading }: { contact?: WaContact; loading: boolean }) {
-  const subtitle = contact?.subtitle || '请选择左侧联系人';
+  const subtitle = contact?.subtitle || '';
   return (
     <header className="flex h-16 items-center justify-between gap-3 border-b border-border px-5">
       <div className="flex min-w-0 items-center gap-3">
-        <span className="grid size-10 place-items-center rounded-full bg-emerald-50"><WhatsAppIcon className="size-7" /></span>
+        <WaContactAvatar contact={contact} />
         <div className="min-w-0">
           <h2 className="truncate text-sm font-semibold">{contact?.title || '暂无联系人'}</h2>
-          <p className="truncate text-xs text-muted-foreground">{subtitle}</p>
+          {subtitle ? <p className="truncate text-xs text-muted-foreground">{subtitle}</p> : null}
         </div>
       </div>
       <div className="flex items-center gap-2">

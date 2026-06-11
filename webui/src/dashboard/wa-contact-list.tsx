@@ -1,11 +1,11 @@
 import type { MouseEvent } from 'react';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Loader2, Trash2 } from 'lucide-react';
 import { NavLink } from 'react-router';
 import { WAContactKind } from '../proto/byte/v/forge/waapp/v1/contacts';
 import type { WaContact } from './wa-chat-model';
 import { formatChatTime } from './wa-chat-model';
-import { WhatsAppIcon } from './wa-brand-icon';
+import { WaContactAvatar } from './wa-contact-avatar';
 import { waContactPath } from './wa-route-paths';
 import { Badge, Button, Input } from './ui';
 
@@ -57,7 +57,7 @@ function ContactRow({ accountID, contact, selected, deleting, onOpenContact, onD
   return (
     <div className={`mb-1 grid grid-cols-[1fr_auto] items-center rounded-2xl transition hover:bg-muted/60 ${selected ? 'bg-primary/10' : unread ? 'bg-emerald-50/70' : ''}`} onContextMenu={(event) => { event.preventDefault(); revealDelete(false); }}>
       <NavLink className="grid min-w-0 grid-cols-[42px_1fr_auto] items-center gap-3 px-3 py-2 text-left" to={waContactPath(accountID, contact.id)} title="长按显示删除" onClick={openOrReveal} onPointerDown={startHold} onPointerLeave={clearHold} onPointerCancel={clearHold} onPointerUp={clearHold}>
-        <ContactAvatar contact={contact} />
+        <WaContactAvatar contact={contact} />
         <span className="min-w-0 space-y-0.5">
           <span className="flex min-w-0 items-center gap-2">
             <span className={`truncate text-sm ${unread ? 'font-semibold text-foreground' : 'font-medium'}`}>{contact.title}</span>
@@ -74,19 +74,6 @@ function ContactRow({ accountID, contact, selected, deleting, onOpenContact, onD
       {deleteVisible && <Button className="mr-2 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive" variant="ghost" size="icon" type="button" title="删除联系人" aria-label="删除联系人" disabled={deleting} onClick={() => onDeleteContact(contact.id)}>{deleting ? <Loader2 className="size-4 animate-spin" /> : <Trash2 size={14} />}</Button>}
     </div>
   );
-}
-
-function ContactAvatar({ contact }: { contact: WaContact }) {
-  const [failedURL, setFailedURL] = useState('');
-  const pictureURL = contact.profilePictureURL || '';
-
-  useEffect(() => {
-    setFailedURL('');
-  }, [pictureURL]);
-  if (pictureURL && failedURL !== pictureURL) {
-    return <img className="size-10 rounded-full object-cover" src={pictureURL} alt={contact.title} loading="lazy" onError={() => setFailedURL(pictureURL)} />;
-  }
-  return <span className="grid size-10 place-items-center rounded-full bg-emerald-50"><WhatsAppIcon className="size-6" title={contact.title} /></span>;
 }
 
 function ContactKindBadge({ kind }: { kind: WAContactKind }) {
