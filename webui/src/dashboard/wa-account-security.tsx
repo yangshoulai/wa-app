@@ -11,7 +11,6 @@ type Props = { account: WaAccountProjection; onDone: (message: string) => void; 
 export function WaAccountSecurityPanel({ account, onDone, onError }: Props) {
   const [pin, setPin] = useState('');
   const [email, setEmail] = useState('');
-  const [idToken, setIdToken] = useState('');
   const [emailOtp, setEmailOtp] = useState('');
   const [emailOtpVisible, setEmailOtpVisible] = useState(false);
   const [lastStatus, setLastStatus] = useState<AccountSettingsOperationStatus | undefined>();
@@ -19,10 +18,9 @@ export function WaAccountSecurityPanel({ account, onDone, onError }: Props) {
   const handleSuccess = (message: string, status?: AccountSettingsOperationStatus) => { setLastStatus(status); onDone(message); };
   const twoFactor = useMutation({ mutationFn: () => setWaTwoFactorAuthSettings(account, pin), onSuccess: (resp) => { setPin(''); handleSuccess('2FA PIN 设置请求已提交', resp.operation?.status); }, onError: handleError });
   const emailSet = useMutation({
-    mutationFn: () => setWaAccountEmail(account, { email_address: email, google_id_token: idToken }),
+    mutationFn: () => setWaAccountEmail(account, { email_address: email }),
     onSuccess: (resp) => {
       const status = resp.operation?.status;
-      setIdToken('');
       setEmailOtpVisible(shouldShowEmailOtp(status));
       if (status === AccountSettingsOperationStatus.ACCOUNT_SETTINGS_OPERATION_STATUS_VERIFIED) setEmailOtp('');
       handleSuccess('账户邮箱设置请求已提交', status);
@@ -61,7 +59,6 @@ export function WaAccountSecurityPanel({ account, onDone, onError }: Props) {
           <div className="inline-flex items-center gap-2 text-sm font-medium"><Mail size={15} />设置账户邮箱</div>
           <FieldGroup>
             <Field><FieldLabel>邮箱地址</FieldLabel><Input value={email} onChange={(event) => handleEmailChange(event.target.value)} type="email" disabled={busy} /></Field>
-            <Field><FieldLabel>Google ID token</FieldLabel><Input value={idToken} onChange={(event) => setIdToken(event.target.value)} type="password" placeholder="可选" disabled={busy} /></Field>
             <Button type="submit" disabled={busy || !email}><Mail size={14} />提交邮箱</Button>
           </FieldGroup>
         </form>
