@@ -20,7 +20,6 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
@@ -36,7 +35,8 @@ type RailProps = { accounts: WAAccount[]; selectedID: string; avatarVersion: str
 type AccountItemProps = { account: WAAccount; selected: boolean; avatarVersion: string; connection?: LongConnectionState; loading: boolean };
 
 const collapsedIconButtonClass = 'group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-12! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
-const collapsedAccountButtonClass = 'group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:h-14! group-data-[collapsible=icon]:w-12! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0!';
+const accountButtonClass = 'h-14 gap-2 p-1! group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:size-14! group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-1!';
+const footerButtonClass = 'group-data-[collapsible=icon]:mx-auto group-data-[collapsible=icon]:justify-center';
 const collapsedTextClass = 'group-data-[collapsible=icon]:hidden';
 
 export function WaAccountRail({ accounts, selectedID, avatarVersion, connections, loading, connectionsLoading, hasNextPage, loadingMore, onLoadMore }: RailProps) {
@@ -48,13 +48,12 @@ export function WaAccountRail({ accounts, selectedID, avatarVersion, connections
     <Sidebar collapsible="icon" aria-label="WA 账号" className="border-r border-border">
       <SidebarHeader className="border-b border-sidebar-border">
         <SidebarMenu>
-          <SidebarMenuItem><RailBrand count={accounts.length} /></SidebarMenuItem>
+          <SidebarMenuItem><RailBrand /></SidebarMenuItem>
         </SidebarMenu>
         {expanded ? <RailSearch value={query} onChange={setQuery} /> : null}
       </SidebarHeader>
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel>账号</SidebarGroupLabel>
+        <SidebarGroup className="p-1">
           <SidebarGroupContent>
             <SidebarMenu>
               {loading ? <LoadingItems /> : null}
@@ -77,15 +76,14 @@ export function WaAccountRail({ accounts, selectedID, avatarVersion, connections
   );
 }
 
-function RailBrand({ count }: { count: number }) {
+function RailBrand() {
   const { state, toggleSidebar } = useSidebar();
   if (state === 'collapsed') {
     return <SidebarMenuButton size="lg" tooltip="展开账号栏" aria-label="展开账号栏" className={collapsedIconButtonClass} onClick={toggleSidebar}><PanelLeftOpen className="size-6!" /></SidebarMenuButton>;
   }
   return (
-    <div className="flex h-12 items-center gap-2 rounded-md px-2">
+    <div className="flex h-12 items-center justify-between rounded-md px-2">
       <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-emerald-50"><WhatsAppIcon className="size-6" /></span>
-      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">WA 账号</span><span className="block text-xs text-muted-foreground">已加载 {count} 个</span></span>
       <Button variant="ghost" size="icon-sm" aria-label="收起账号栏" title="收起账号栏" onClick={toggleSidebar}><PanelLeftClose /></Button>
     </div>
   );
@@ -98,16 +96,14 @@ function RailSearch({ value, onChange }: { value: string; onChange: (value: stri
 }
 
 function AccountItem({ account, selected, avatarVersion, connection, loading }: AccountItemProps) {
-  const { state } = useSidebar();
   const id = waAccountID(account);
   const title = waAccountPhoneLabel(account);
-  const avatarSize = state === 'collapsed' ? 'lg' : 'xs';
   return (
     <SidebarMenuItem>
-      <SidebarMenuButton asChild size="lg" isActive={selected} tooltip={title} className={`h-14 ${collapsedAccountButtonClass}`}>
+      <SidebarMenuButton asChild size="lg" isActive={selected} tooltip={title} className={accountButtonClass}>
         <NavLink to={waChatsPath(id)} title={title} aria-label={title}>
           <span className="relative shrink-0">
-            <WaAccountAvatar account={account} version={avatarVersion} size={avatarSize} />
+            <WaAccountAvatar account={account} version={avatarVersion} size="lg" />
             <WaConnectionDot className="absolute bottom-0 right-0" connection={connection} loading={loading} />
           </span>
           <span className={`min-w-0 flex-1 ${collapsedTextClass}`}>
@@ -122,14 +118,14 @@ function AccountItem({ account, selected, avatarVersion, connection, loading }: 
 function RailFooter({ selectedID }: { selectedID: string }) {
   return (
     <SidebarMenu>
-      <SidebarMenuItem>{selectedID ? <FooterLink title="账号信息" to={waAccountPath(selectedID)}><Info className="size-6!" /></FooterLink> : <SidebarMenuButton size="lg" disabled tooltip="账号信息" aria-label="账号信息" className={collapsedIconButtonClass}><Info className="size-6!" /><span className={collapsedTextClass}>账号信息</span></SidebarMenuButton>}</SidebarMenuItem>
-      <SidebarMenuItem><FooterLink title="添加账号" to="/accounts/new"><Plus className="size-6!" /></FooterLink></SidebarMenuItem>
+      <SidebarMenuItem>{selectedID ? <FooterLink title="账号信息" to={waAccountPath(selectedID)}><Info /></FooterLink> : <SidebarMenuButton size="lg" disabled tooltip="账号信息" aria-label="账号信息" className={footerButtonClass}><Info /><span>账号信息</span></SidebarMenuButton>}</SidebarMenuItem>
+      <SidebarMenuItem><FooterLink title="添加账号" to="/accounts/new"><Plus /></FooterLink></SidebarMenuItem>
     </SidebarMenu>
   );
 }
 
 function FooterLink({ children, title, to }: { children: ReactNode; title: string; to: string }) {
-  return <SidebarMenuButton asChild size="lg" tooltip={title} className={collapsedIconButtonClass}><Link to={to} title={title} aria-label={title}>{children}<span className={collapsedTextClass}>{title}</span></Link></SidebarMenuButton>;
+  return <SidebarMenuButton asChild size="lg" tooltip={title} className={footerButtonClass}><Link to={to} title={title} aria-label={title}>{children}<span>{title}</span></Link></SidebarMenuButton>;
 }
 
 function LoadMoreButton({ loading, onLoadMore }: { loading: boolean; onLoadMore: () => void }) {
