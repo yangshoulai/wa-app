@@ -173,19 +173,23 @@ func verificationCodeRequestAccepted(result EngineCodeResult) bool {
 }
 
 func registrationProbeAllowsMethod(result EngineProbeResult, method waappv1.VerificationDeliveryMethod) bool {
-	if result.Err != nil || result.Status != waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_REACHABLE {
+	if result.Err != nil || result.Blocked || result.AccountFlow == accountProbeFlowInvalidNumber {
 		return false
 	}
 	if method == waappv1.VerificationDeliveryMethod_VERIFICATION_DELIVERY_METHOD_UNSPECIFIED ||
 		method == waappv1.VerificationDeliveryMethod_VERIFICATION_DELIVERY_METHOD_SMS {
-		return result.CanSendSMS
+		return registrationProbeMethodAvailable(result, waappv1.VerificationDeliveryMethod_VERIFICATION_DELIVERY_METHOD_SMS) || result.CanSendSMS
 	}
+	return registrationProbeMethodAvailable(result, method)
+}
+
+func registrationProbeMethodAvailable(result EngineProbeResult, method waappv1.VerificationDeliveryMethod) bool {
 	for _, status := range result.MethodStatuses {
 		if status.Method == method {
 			return status.Available
 		}
 	}
-	return false
+	return result.Status == waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_REACHABLE && method == waappv1.VerificationDeliveryMethod_VERIFICATION_DELIVERY_METHOD_SMS && result.CanSendSMS
 }
 
 func registrationRequestFailureMap(result EngineCodeResult, method waappv1.VerificationDeliveryMethod, route DynamicProxyRoute, managedRoute bool) map[string]any {

@@ -43,10 +43,14 @@ export const apkSupportedLoginRegistrationMethods = [
 ];
 
 export function registrationMethodStatus(status: WaProbeStatus, method: VerificationDeliveryMethod) {
+  const methodStatus = status.methodStatuses.find((item) => methodStatusMatches(item, method));
   if (method === VerificationDeliveryMethod.VERIFICATION_DELIVERY_METHOD_SMS) {
-    return { available: status.smsAvailable, cooldownSeconds: status.smsWaitSeconds };
+    return {
+      available: methodStatus?.available ?? status.smsAvailable,
+      cooldownSeconds: methodStatus?.cooldownSeconds ?? status.smsWaitSeconds,
+    };
   }
-  return status.methodStatuses.find((item) => methodStatusMatches(item, method));
+  return methodStatus;
 }
 
 export function registrationMethodCooldownSeconds(status: WaProbeStatus, method: VerificationDeliveryMethod, elapsedSeconds = 0) {
@@ -65,6 +69,10 @@ export function registrationMethodAvailable(status: WaProbeStatus, method: Verif
 
 export function registrationAnyMethodAvailable(status: WaProbeStatus | null, elapsedSeconds = 0) {
   return Boolean(status && selectableRegistrationMethods.some((option) => registrationMethodAvailable(status, option.value, elapsedSeconds)));
+}
+
+export function registrationChannelsHardBlocked(status: WaProbeStatus | null) {
+  return Boolean(status?.blocked === true || status?.accountFlow === 'invalid_number');
 }
 
 function methodOption(value: VerificationDeliveryMethod, code: string, description: string): SelectableRegistrationMethodOption {

@@ -562,14 +562,14 @@ func verificationMethodStatuses(data map[string]any, methods []waappv1.Verificat
 		if !verificationMethodVisibleForProbe(data, code) {
 			continue
 		}
-		out = upsertVerificationMethodStatus(out, code, verificationMethodWaitStatus(data, code, false))
+		out = upsertVerificationMethodStatus(out, code, verificationMethodWaitStatus(data, code, true))
 	}
 	for _, method := range methods {
 		code := registrationMethodName(method, "")
 		if code == "" {
 			continue
 		}
-		out = upsertVerificationMethodStatus(out, code, verificationMethodWaitStatus(data, code, false))
+		out = upsertVerificationMethodStatus(out, code, verificationMethodWaitStatus(data, code, true))
 	}
 	for _, code := range apkCooldownMethodCodes {
 		wait := verificationMethodWaitStatus(data, code, false)

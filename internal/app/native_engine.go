@@ -106,15 +106,22 @@ func (e *NativeEngine) probeAccountWithState(ctx context.Context, input EngineRe
 	data, _, err := client.postWASafe(ctx, defaultWAExistURL, plain, nativeUserAgentForState(state, input.AppVersion))
 	result := parseExistProbeResult(data)
 	if err != nil {
-		if result.Status == waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_UNKNOWN {
-			result.Status = waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_REJECTED
+		if result.Err != nil || parsedExistApplicationOutcome(result) {
+			return result
 		}
+		result.Status = waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_REJECTED
 		result.AccountFlow = accountProbeFlowProbeFailed
-		if result.Err == nil {
-			result.Err = classifyHTTPError(data, err)
-		}
+		result.Err = classifyHTTPError(data, err)
 	}
 	return result
+}
+
+func parsedExistApplicationOutcome(result EngineProbeResult) bool {
+	return result.Status != waappv1.AccountProbeStatus_ACCOUNT_PROBE_STATUS_UNKNOWN ||
+		result.AccountFlow != accountProbeFlowUnknown ||
+		result.RawStatus != "" ||
+		result.RawReason != "" ||
+		len(result.MethodStatuses) > 0
 }
 
 func (e *NativeEngine) RequestVerificationCode(ctx context.Context, input EngineRegistrationInput) EngineCodeResult {

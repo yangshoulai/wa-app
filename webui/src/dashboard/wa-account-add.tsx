@@ -12,7 +12,7 @@ import { accountReasonLabel } from './wa-result-labels';
 import { waProbeStatus } from './wa-result-model';
 import { WaRegistrationChannelButtons } from './wa-registration-channel-buttons';
 import { WaRegistrationOtpCard } from './wa-registration-otp-card';
-import { registrationAnyMethodAvailable, type SelectableRegistrationMethodOption } from './wa-registration-methods';
+import { registrationAnyMethodAvailable, registrationChannelsHardBlocked, type SelectableRegistrationMethodOption } from './wa-registration-methods';
 import { WaResultPanel } from './wa-result-panel';
 import { resolveWaPhoneTarget, type WaResolvedPhone } from './wa-utils';
 type ProbeState = { target: WaResolvedPhone; result: WaWorkflowResponse } | null;
@@ -38,7 +38,8 @@ export function WaAccountAdd({ disabled, onChanged, onDone, onError }: Props) {
   const cooldownElapsedSeconds = Math.max(0, (clockNow - cooldownStartedAt) / 1000);
   const blocked = status.blocked === true;
   const showChannels = Boolean(channelStatus && !pending);
-  const canRegister = samePhone && registrationAnyMethodAvailable(channelStatus, cooldownElapsedSeconds) && !blocked && channelStatus?.requestFailed !== true;
+  const channelsHardBlocked = registrationChannelsHardBlocked(channelStatus);
+  const canRegister = samePhone && registrationAnyMethodAvailable(channelStatus, cooldownElapsedSeconds) && !channelsHardBlocked;
   const showHelp = pending || blocked || canRegister || Boolean(activeRegistrationResult);
   const badgeVariant = pending ? 'default' : blocked ? 'destructive' : canRegister ? 'default' : 'outline';
   const badgeLabel = pending ? '等待 OTP' : blocked ? '已封禁' : canRegister ? '可注册' : '待检测';
@@ -147,7 +148,7 @@ export function WaAccountAdd({ disabled, onChanged, onDone, onError }: Props) {
         {showChannels && (
           <Field>
             <FieldLabel>注册 / 登录通道</FieldLabel>
-            <WaRegistrationChannelButtons status={channelStatus} elapsedSeconds={cooldownElapsedSeconds} disabled={busy || disabled || Boolean(pending) || channelStatus?.requestFailed === true || blocked} onStart={(method) => void startRegistration(method)} />
+            <WaRegistrationChannelButtons status={channelStatus} elapsedSeconds={cooldownElapsedSeconds} disabled={busy || disabled || Boolean(pending) || channelsHardBlocked} onStart={(method) => void startRegistration(method)} />
             <FieldDescription>检测后只显示当前可用通道；冷却中的通道会显示倒计时。</FieldDescription>
           </Field>
         )}
@@ -169,8 +170,9 @@ export function WaAccountAdd({ disabled, onChanged, onDone, onError }: Props) {
 function registrationHelp(pending: boolean, canRegister: boolean, hasRegistrationResult: boolean, blocked: boolean) {
   if (blocked) return 'WA 已拒绝该号码；请停止重复请求，建议更换号码或注册通道。';
   if (pending) return 'OTP 已发送，请在本页输入验证码完成注册。';
+  if (canRegister && hasRegistrationResult) return '当前通道已返回结果；仍有其他可用通道，可直接继续尝试。';
+  if (canRegister) return '检测通过，可以点击可用通道发起注册。';
   if (hasRegistrationResult) return '本次注册请求已返回结果，可重新检测后再继续。';
-  if (canRegister) return '检测通过，可以点击“发起注册”。';
   return '检测通过前不会持久化 WAAccount。';
 }
 function probeMatchesValues(probe: ProbeState, phone: string, countryCallingCode: string) {
