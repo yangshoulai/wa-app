@@ -259,14 +259,16 @@ func (e *NativeEngine) BuildRegistrationRequest(ctx context.Context, req *waappv
 	resp.Params = params.toProto(req.GetIncludeSensitiveValues())
 	resp.Plaintext = sensitiveOutput(plain, "registration-plaintext", req.GetIncludeSensitiveValues())
 	if req.GetEncryptRequest() {
-		enc, err := encryptWASafe([]byte(plain), defaultWASafeServerPublicKeyHex)
+		envelope, err := buildWASafeEnvelope([]byte(plain), defaultWASafeServerPublicKeyHex)
 		if err != nil {
 			return nil, err
 		}
-		body := "ENC=" + enc
-		resp.Body = sensitiveOutput(body, "registration-body", req.GetIncludeSensitiveValues())
-		resp.EncSha256 = encHash(enc)
-		resp.EncLength = int32(len(enc))
+		if envelope.Authorization != "" {
+			resp.Headers["Authorization"] = envelope.Authorization
+		}
+		resp.Body = sensitiveOutput(envelope.Body, "registration-body", req.GetIncludeSensitiveValues())
+		resp.EncSha256 = encHash(envelope.Enc)
+		resp.EncLength = int32(len(envelope.Enc))
 	}
 	return resp, nil
 }

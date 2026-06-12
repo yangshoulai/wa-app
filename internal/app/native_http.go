@@ -82,12 +82,11 @@ func (c *nativeHTTPClient) postWASafe(ctx context.Context, endpoint string, plai
 	if endpoint == "" {
 		return nil, "", fmt.Errorf("endpoint is not configured")
 	}
-	enc, err := encryptWASafe([]byte(plain), defaultWASafeServerPublicKeyHex)
+	envelope, err := buildWASafeEnvelope([]byte(plain), defaultWASafeServerPublicKeyHex)
 	if err != nil {
 		return nil, "", err
 	}
-	body := "ENC=" + enc
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBufferString(body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewBufferString(envelope.Body))
 	if err != nil {
 		return nil, "", err
 	}
@@ -96,9 +95,12 @@ func (c *nativeHTTPClient) postWASafe(ctx context.Context, endpoint string, plai
 	req.Header.Set("WaMsysRequest", "1")
 	req.Header.Set("X-Forwarded-Host", defaultNativeHTTPHost)
 	req.Header.Set("request_token", strings.ToUpper(newUUIDString()))
+	if envelope.Authorization != "" {
+		req.Header.Set("Authorization", envelope.Authorization)
+	}
 	resp, err := c.client.Do(req)
 	if err != nil {
-		return nil, enc, err
+		return nil, envelope.Enc, err
 	}
 	defer resp.Body.Close()
 	data, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
@@ -110,9 +112,9 @@ func (c *nativeHTTPClient) postWASafe(ctx context.Context, endpoint string, plai
 		}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return result, enc, fmt.Errorf("wasafe endpoint returned status %d", resp.StatusCode)
+		return result, envelope.Enc, fmt.Errorf("wasafe endpoint returned status %d", resp.StatusCode)
 	}
-	return result, enc, nil
+	return result, envelope.Enc, nil
 }
 
 func encryptWASafe(plaintext []byte, serverPublicKeyHex string) (string, error) {
