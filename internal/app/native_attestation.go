@@ -34,7 +34,7 @@ func buildWASafeEnvelope(plain []byte, serverPublicKeyHex string, attestation na
 		return waSafeEnvelope{}, err
 	}
 	body := "ENC=" + enc
-	signature, authorization, err := attestation.sign([]byte(body))
+	signature, authorization, err := attestation.sign([]byte(enc))
 	if err != nil {
 		return waSafeEnvelope{}, err
 	}
@@ -132,7 +132,7 @@ func newNativeSoftwareAttestationCertificateChain(privateKey *ecdsa.PrivateKey, 
 	if err != nil {
 		return nil, err
 	}
-	return append(append([]byte{}, leafDER...), rootDER...), nil
+	return append(append([]byte{}, rootDER...), leafDER...), nil
 }
 
 func nativeAttestationSerial() (*big.Int, error) {
@@ -187,7 +187,7 @@ func (a nativeSoftwareAttestation) ready() bool {
 	if err != nil || len(certificates) == 0 {
 		return false
 	}
-	return !certificates[0].IsCA
+	return certificates[0].IsCA
 }
 
 func (a nativeSoftwareAttestation) sign(body []byte) (string, string, error) {
