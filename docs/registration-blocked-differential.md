@@ -49,4 +49,4 @@ APK 的冷却是按通道生效：真实可见 fallback 先从 `pref_reg_methods
 - `/v2/code`/`/v2/exist` HTTP envelope 保留最新 APK `RetryingHttpClient` 的 `H` 表单键；当前服务端运行态没有 AndroidKeyStore attestation，按 APK attestation 不可用路径发送 `ENC=<cipher>&H=`，不再伪造自签名 `Authorization` 证书链；运行日志仍不输出 ENC/H/Authorization。
 - `/v2/code` 补最新 APK `KotlinRegistrationBridge.A06 -> A0P` 的 `advertising_id` 标量；非 EU profile 生成稳定 UUID，避免和真实 App 可用 GAID 的请求形态继续偏离。
 - `/v2/exist`/`/v2/code` 的 `feo2_query_status` 默认值对齐最新 APK shared-pref 读取默认值 `did_not_query`；加载旧 profile 时把旧的 `error_security_exception` 视为 stale 运行态结果并刷新为默认值。
-- `/v2/code`/`/v2/exist` HTTP transport 对齐旧 App 抓取形态：保持 HTTP/1.1 keep-alive，不再由 Go transport 显式发送 `Connection: close`，并保留 `WaMsysRequest` / `request_token` 的 APK 头名形态。
+- `/v2/code`/`/v2/exist` HTTP transport 对齐最新 APK 静态形态：不再由 Go transport 显式发送 `Connection: close`，也不手动补 `Connection: Keep-Alive`；保留 `WaMsysRequest` / `request_token` 的 APK 头名形态。

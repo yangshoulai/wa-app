@@ -91,7 +91,6 @@ func (c *nativeHTTPClient) postWASafe(ctx context.Context, endpoint string, plai
 		return nil, "", err
 	}
 	setNativeHTTPHeader(req, "Content-Type", "application/x-www-form-urlencoded")
-	setNativeHTTPHeader(req, "Connection", "Keep-Alive")
 	setNativeHTTPHeader(req, "User-Agent", firstNonEmpty(userAgent, nativeUserAgent(defaultWAAppVersion)))
 	setNativeHTTPHeader(req, "WaMsysRequest", "1")
 	setNativeHTTPHeader(req, "X-Forwarded-Host", defaultNativeHTTPHost)
