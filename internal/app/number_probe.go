@@ -2,9 +2,7 @@ package app
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"strings"
 	"time"
@@ -102,74 +100,22 @@ func (s *Server) probeNumberSMSAttempt(ctx context.Context, payload map[string]a
 	return result, route, false, ""
 }
 
-func (s *Server) numberProbeGatewayProxy(ctx context.Context, payload map[string]any, correlationID string) (DynamicProxyRoute, error) {
-	if s == nil || s.proxyRuntime == nil {
-		return DynamicProxyRoute{}, fmt.Errorf("WA proxy runtime is not configured")
-	}
-	username := strings.TrimSpace(s.numberProbeProxyUsername)
-	if username == "" {
-		return DynamicProxyRoute{}, fmt.Errorf("WA number probe proxy username is not configured")
-	}
-	return s.proxyRuntime.GatewayProxyRoute(ctx, username, DynamicProxyRouteRequest{
+func (s *Server) numberProbeProxy(ctx context.Context, payload map[string]any, correlationID string) (DynamicProxyRoute, string, map[string]any, func(), error) {
+	route, useProxy, err := s.resolveWAProxyRoute(ctx, waProxyResolveRequest{
+		Stage:         waProxyStageProbe,
+		Payload:       payload,
+		WAAccountID:   textField(payload, "wa_account_id"),
+		CountryCode:   proxyCountryCodeFromPayload(payload),
 		Purpose:       "WA_NUMBER_PROBE",
 		CorrelationID: correlationID,
-		CountryCode:   proxyCountryCodeFromPayload(payload),
-		TTL:           numberProbeProxyRouteTTL,
-		Mode:          DynamicProxySessionModeRotating,
 	})
-}
-
-func (s *Server) numberProbeProxy(ctx context.Context, payload map[string]any, correlationID string) (DynamicProxyRoute, string, map[string]any, func(), error) {
-	if proxyURL, route, countryCode := sharedNumberProbeProxy(payload); proxyURL != "" {
-		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": "SHARED_DYNAMIC_IP", "country_code": firstNonEmpty(countryCode, "UNKNOWN"), "account_id": route.AccountID, "route_id": route.RouteID}
-		return route, proxyURL, proxy, func() {}, nil
-	}
-	if s != nil && strings.TrimSpace(s.numberProbeProxyUsername) != "" {
-		route, err := s.numberProbeGatewayProxy(ctx, payload, correlationID)
-		if err != nil {
-			return DynamicProxyRoute{}, "", nil, func() {}, err
-		}
-		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": route.ProxyMode, "country_code": route.CountryCode, "account_id": route.AccountID, "route_id": route.RouteID, "proxy_username": route.Username}
-		return route, route.ProxyURL, proxy, func() { s.releaseGatewayProxyRoute(context.Background(), route, "WA_NUMBER_PROBE") }, nil
-	}
-	if s != nil && strings.TrimSpace(s.numberProbeProxyURL) != "" {
-		proxyURL := strings.TrimSpace(s.numberProbeProxyURL)
-		route := staticProxyRoute("number-probe", proxyURL, staticNumberProbeProxyMode)
-		return route, proxyURL, staticProxyResult(staticNumberProbeProxyMode), func() {}, nil
-	}
-	if s != nil && strings.TrimSpace(s.commonProxyURL) != "" {
-		proxyURL := strings.TrimSpace(s.commonProxyURL)
-		route := staticProxyRoute("common", proxyURL, staticCommonProxyMode)
-		return route, proxyURL, staticProxyResult(staticCommonProxyMode), func() {}, nil
-	}
-	if s == nil || s.proxyRuntime == nil {
-		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": "DIRECT", "country_code": "LOCAL"}
-		return DynamicProxyRoute{}, "", proxy, func() {}, nil
-	}
-	route, err := s.numberProbeGatewayProxy(ctx, payload, correlationID)
 	if err != nil {
-		proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": "DIRECT_FALLBACK", "country_code": "LOCAL", "fallback_reason": "dynamic_proxy_unavailable"}
-		return DynamicProxyRoute{}, "", proxy, func() {}, nil
+		return DynamicProxyRoute{}, "", nil, func() {}, err
 	}
-	proxy := map[string]any{"success": true, "accepted": true, "proxy_mode": route.ProxyMode, "country_code": route.CountryCode, "account_id": route.AccountID, "route_id": route.RouteID, "proxy_username": route.Username}
-	return route, route.ProxyURL, proxy, func() { s.releaseGatewayProxyRoute(context.Background(), route, "WA_NUMBER_PROBE") }, nil
-}
-
-func sharedNumberProbeProxy(payload map[string]any) (string, DynamicProxyRoute, string) {
-	proxyURL := firstNonEmpty(textField(payload, "proxy_url"), textField(objectField(payload, "proxy"), "proxy_url"))
-	state := map[string]any{}
-	rawState := firstNonEmpty(textField(payload, "proxy_state_json"), textField(payload, "state_json"), textField(objectField(payload, "proxy"), "state_json"))
-	if rawState != "" {
-		_ = json.Unmarshal([]byte(rawState), &state)
+	if !useProxy {
+		return route, "", waProxySummary(route, false), func() {}, nil
 	}
-	if proxyURL == "" {
-		proxyURL = textField(state, "_gopay_proxy")
-	}
-	return proxyURL, DynamicProxyRoute{
-		AccountID: firstNonEmpty(textField(payload, "proxy_account_id"), textField(state, "_proxy_runtime_account_id")),
-		RouteID:   firstNonEmpty(textField(payload, "proxy_route_id"), textField(state, "_proxy_runtime_route_id")),
-		ProxyURL:  proxyURL,
-	}, firstNonEmpty(textField(payload, "proxy_country_code"), textField(state, "_gopay_country_code"), textField(state, "_proxy_runtime_preflight_country_code"))
+	return route, route.ProxyURL, waProxySummary(route, true), func() { s.releaseGatewayProxyRoute(context.Background(), route, "WA_NUMBER_PROBE") }, nil
 }
 
 func buildNumberProbeResult(input map[string]any, proxy map[string]any, fingerprint map[string]any, account map[string]any, sms map[string]any) map[string]any {

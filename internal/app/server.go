@@ -134,11 +134,22 @@ func (s *Server) CreateWAAccount(ctx context.Context, req *waappv1.CreateWAAccou
 	if phone.GetE164Number() == "" {
 		return &waappv1.CreateWAAccountResponse{Error: ToProtoError(NewError(waappv1.WaErrorCode_WA_ERROR_CODE_VALIDATION_FAILED, "phone is required", false))}, nil
 	}
+	if err := validateWAAccountProxyPolicy(req.GetProxyPolicy()); err != nil {
+		return &waappv1.CreateWAAccountResponse{Error: ToProtoError(err)}, nil
+	}
 	if existing, err := s.store.FindWAAccountByPhone(ctx, phone.GetE164Number()); err == nil {
+		if cloneWAAccountProxyPolicy(req.GetProxyPolicy()) != nil {
+			account, saveErr := s.saveWAAccount(ctx, withWAAccountProxyPolicy(existing, req.GetProxyPolicy(), s.clock.Now()))
+			if saveErr != nil {
+				return &waappv1.CreateWAAccountResponse{Error: ToProtoError(saveErr)}, nil
+			}
+			return &waappv1.CreateWAAccountResponse{Account: account}, nil
+		}
 		return &waappv1.CreateWAAccountResponse{Account: existing}, nil
 	}
 	now := s.clock.Now()
 	account := newWAAccount(s.ids.NewID("waacc_"), "", phone, waappv1.WAAccountStatus_WA_ACCOUNT_STATUS_PENDING_REGISTRATION, &waappv1.AuditStamp{CreatedAt: timestamppb.New(now), UpdatedAt: timestamppb.New(now)})
+	account.ProxyPolicy = cloneWAAccountProxyPolicy(req.GetProxyPolicy())
 	account, err := s.saveWAAccount(ctx, account)
 	if err != nil {
 		return &waappv1.CreateWAAccountResponse{Error: ToProtoError(err)}, nil
@@ -170,6 +181,28 @@ func (s *Server) ListWAAccounts(ctx context.Context, req *waappv1.ListWAAccounts
 		return &waappv1.ListWAAccountsResponse{Error: ToProtoError(err)}, nil
 	}
 	return &waappv1.ListWAAccountsResponse{Accounts: accounts, NextCursor: nextCursor}, nil
+}
+
+func (s *Server) UpdateWAAccountProxyPolicy(ctx context.Context, req *waappv1.UpdateWAAccountProxyPolicyRequest) (*waappv1.UpdateWAAccountProxyPolicyResponse, error) {
+	if err := validateContext(req.GetContext()); err != nil {
+		return &waappv1.UpdateWAAccountProxyPolicyResponse{Error: ToProtoError(err)}, nil
+	}
+	accountID, err := requireWAAccountID(req.GetWaAccountId())
+	if err != nil {
+		return &waappv1.UpdateWAAccountProxyPolicyResponse{Error: ToProtoError(err)}, nil
+	}
+	if err := validateWAAccountProxyPolicy(req.GetProxyPolicy()); err != nil {
+		return &waappv1.UpdateWAAccountProxyPolicyResponse{Error: ToProtoError(err)}, nil
+	}
+	account, err := s.getWAAccount(ctx, accountID)
+	if err != nil {
+		return &waappv1.UpdateWAAccountProxyPolicyResponse{Error: ToProtoError(err)}, nil
+	}
+	account, err = s.saveWAAccount(ctx, withWAAccountProxyPolicy(account, req.GetProxyPolicy(), s.clock.Now()))
+	if err != nil {
+		return &waappv1.UpdateWAAccountProxyPolicyResponse{Error: ToProtoError(err)}, nil
+	}
+	return &waappv1.UpdateWAAccountProxyPolicyResponse{Account: account}, nil
 }
 
 func (s *Server) DeleteWAAccount(ctx context.Context, req *waappv1.DeleteWAAccountRequest) (*waappv1.DeleteWAAccountResponse, error) {

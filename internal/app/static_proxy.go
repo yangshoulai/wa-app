@@ -18,15 +18,6 @@ func staticProxyRoute(name string, proxyURL string, mode string) DynamicProxyRou
 	}
 }
 
-func staticProxyResult(mode string) map[string]any {
-	return map[string]any{
-		"success":      true,
-		"accepted":     true,
-		"proxy_mode":   mode,
-		"country_code": "UNKNOWN",
-	}
-}
-
 func isStaticProxyRoute(route DynamicProxyRoute) bool {
 	return strings.HasPrefix(strings.TrimSpace(route.RouteID), "static-")
 }

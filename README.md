@@ -41,13 +41,13 @@ docker compose up -d
 - `WA_APP_DATA_DIR`：容器内持久化目录；默认 `/var/lib/wa-app`。
 - `WA_APP_PG_DSN`：可选 PostgreSQL DSN；为空时使用内置 SQLite 持久化。
 - `WA_APP_REDIS_URL`：可选 Redis URL；为空时使用内置 SQLite 运行态存储。
-- `WA_COMMON_PROXY`：可选默认 WA 出站代理；为空则直连。
-- `WA_NUMBER_PROBE_PROXY`：可选号码/SMS 探测代理；为空时使用 `WA_COMMON_PROXY`，`WA_COMMON_PROXY` 也为空则直连。
-- `WA_REGISTRATION_PROXY`：可选注册与 OTP 提交代理；为空时使用 `WA_COMMON_PROXY`，`WA_COMMON_PROXY` 也为空则直连。
-- `PROXY_RUNTIME_API_BASE_URL`：可选 proxy-runtime API；配置后可按入口用户名解析 gateway 代理。
+- `WA_COMMON_PROXY`：系统默认 WA 出站代理；账号未配置代理策略且阶段代理为空时使用，仍为空则直连。
+- `WA_NUMBER_PROBE_PROXY`：系统级号码/SMS 探测代理；账号探测策略未配置时使用。
+- `WA_REGISTRATION_PROXY`：系统级注册与 OTP 提交代理；账号注册策略未配置时使用。
+- `PROXY_RUNTIME_API_BASE_URL`：可选 proxy-runtime API；配置后可按入口用户名或账号绑定的 ingress rule 解析 gateway 代理。
 - `PROXY_RUNTIME_LOCAL_PROTOCOL`：proxy-runtime gateway 协议，默认 `socks5`。
-- `WA_NUMBER_PROBE_PROXY_USERNAME`：可选号码/SMS 探测入口用户名；配置后优先使用 proxy-runtime，不再被 `WA_COMMON_PROXY` 抢先。
-- `WA_REGISTRATION_PROXY_USERNAME`：可选注册/OTP 入口用户名；配置后优先使用 proxy-runtime，不再被 `WA_COMMON_PROXY` 抢先。
+- `WA_NUMBER_PROBE_PROXY_USERNAME`：系统级号码/SMS 探测入口用户；账号探测策略未配置时作为阶段默认入口。
+- `WA_REGISTRATION_PROXY_USERNAME`：系统级注册/OTP 入口用户；账号注册策略未配置时作为阶段默认入口。
 
 PostgreSQL 和 Redis 都是可选组件。需要启用时，在 `docker-compose.yml` 中取消对应服务注释，并在 `.env` 中填写 `WA_APP_PG_DSN` / `WA_APP_REDIS_URL`。
 

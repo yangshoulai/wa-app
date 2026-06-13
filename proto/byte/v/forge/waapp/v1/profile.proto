@@ -17,6 +17,7 @@ service WaProfileService {
   rpc CreateWAAccount(CreateWAAccountRequest) returns (CreateWAAccountResponse);
   rpc GetWAAccount(GetWAAccountRequest) returns (GetWAAccountResponse);
   rpc ListWAAccounts(ListWAAccountsRequest) returns (ListWAAccountsResponse);
+  rpc UpdateWAAccountProxyPolicy(UpdateWAAccountProxyPolicyRequest) returns (UpdateWAAccountProxyPolicyResponse);
   rpc DeleteWAAccount(DeleteWAAccountRequest) returns (DeleteWAAccountResponse);
   rpc PrepareClientProfile(PrepareClientProfileRequest) returns (PrepareClientProfileResponse);
   rpc GetClientProfile(GetClientProfileRequest) returns (GetClientProfileResponse);
@@ -48,6 +49,25 @@ enum KeyMaterialStatus {
   KEY_MATERIAL_STATUS_ROTATED = 4;
 }
 
+enum WAProxyPolicyMode {
+  WA_PROXY_POLICY_MODE_UNSPECIFIED = 0;
+  WA_PROXY_POLICY_MODE_INHERIT = 1;
+  WA_PROXY_POLICY_MODE_DIRECT = 2;
+  WA_PROXY_POLICY_MODE_COMMON_PROXY = 3;
+  WA_PROXY_POLICY_MODE_PROXY_RUNTIME_INGRESS_RULE = 4;
+}
+
+message WAProxyStagePolicy {
+  WAProxyPolicyMode mode = 1;
+  string proxy_runtime_ingress_rule_id = 2;
+}
+
+message WAAccountProxyPolicy {
+  WAProxyStagePolicy default_policy = 1;
+  WAProxyStagePolicy probe_policy = 2;
+  WAProxyStagePolicy registration_policy = 3;
+}
+
 message WAAccount {
   string wa_account_id = 1;
   string display_name = 2;
@@ -55,6 +75,7 @@ message WAAccount {
   WAAccountStatus status = 4;
   AuditStamp audit = 5;
   TwoFactorAuthStatus two_factor_auth = 6;
+  WAAccountProxyPolicy proxy_policy = 7;
 }
 
 message ClientProfile {
@@ -91,6 +112,7 @@ message DeviceFingerprint {
 message CreateWAAccountRequest {
   RequestContext context = 1;
   PhoneTarget phone = 2;
+  WAAccountProxyPolicy proxy_policy = 3;
 }
 
 message CreateWAAccountResponse {
@@ -118,6 +140,17 @@ message ListWAAccountsResponse {
   repeated WAAccount accounts = 1;
   WaError error = 2;
   string next_cursor = 3;
+}
+
+message UpdateWAAccountProxyPolicyRequest {
+  RequestContext context = 1;
+  string wa_account_id = 2;
+  WAAccountProxyPolicy proxy_policy = 3;
+}
+
+message UpdateWAAccountProxyPolicyResponse {
+  WAAccount account = 1;
+  WaError error = 2;
 }
 
 message DeleteWAAccountRequest {

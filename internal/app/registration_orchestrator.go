@@ -64,6 +64,14 @@ func (s *Server) StartRegistration(ctx context.Context, payload map[string]any) 
 	if err != nil {
 		return nil, err
 	}
+	if policy, err := waAccountProxyPolicyFromPayload(basePayload); err != nil {
+		return nil, err
+	} else if policy != nil {
+		account, err = gateway.server.saveWAAccount(ctx, withWAAccountProxyPolicy(account, policy, gateway.server.clock.Now()))
+		if err != nil {
+			return nil, err
+		}
+	}
 	record := gateway.server.newVerificationCodeRequestRecord(account, profile, method, codeResult)
 	if err := gateway.server.store.SaveVerificationRequest(ctx, record); err != nil {
 		_ = gateway.discardRejectedRegistration(context.Background(), basePayload, waAccountID(account), record.GetVerificationRequestId())
