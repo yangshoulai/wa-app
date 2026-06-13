@@ -245,10 +245,6 @@ func codeDeviceMap(method string, state nativeState) map[string]string {
 		"education_screen_displayed": "false",
 		"prefer_sms_over_flash":      nativePreferSMSOverFlash(method, fields),
 		"network_radio_type":         fields["network_radio_type"],
-		"sim_type":                   fields["sim_type"],
-		"airplane_mode_type":         fields["airplane_mode_type"],
-		"cellular_strength":          fields["cellular_strength"],
-		"roaming_type":               fields["roaming_type"],
 		"simnum":                     fields["simnum"],
 		"hasinrc":                    fields["hasinrc"],
 		"pid":                        fields["pid"],
@@ -264,6 +260,10 @@ func codeDeviceMap(method string, state nativeState) map[string]string {
 	}
 	addNonEmptyNativeCodeField(out, fields, "mistyped")
 	addNonEmptyNativeCodeField(out, fields, "hasav")
+	addNonEmptyNativeCodeField(out, fields, "sim_type")
+	addNonEmptyNativeCodeField(out, fields, "airplane_mode_type")
+	addNonEmptyNativeCodeField(out, fields, "cellular_strength")
+	addNonEmptyNativeCodeField(out, fields, "roaming_type")
 	return out
 }
 
@@ -324,10 +324,6 @@ const (
 func nativeDefaultDeviceMapFields() map[string]string {
 	return map[string]string{
 		"network_radio_type":    "1",
-		"sim_type":              "1",
-		"airplane_mode_type":    "0",
-		"cellular_strength":     "5",
-		"roaming_type":          "0",
 		"mistyped":              "7",
 		"hasav":                 "2",
 		"pid":                   "29418",
